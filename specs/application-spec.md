@@ -5,11 +5,12 @@
 StorAI-Booker is a web-based application that leverages Large Language Models (LLMs) to generate personalized, illustrated storybooks for children. The application provides an intuitive interface for creating custom stories, managing a library of generated books, and configuring generation parameters.
 
 ### 1.1 Purpose
-Enable users to generate age-appropriate, illustrated storybooks tailored to specific audiences, topics, and creative preferences using AI-powered generation.
+Enable users to generate age-appropriate, illustrated storybooks and comic books tailored to specific audiences, topics, and creative preferences using AI-powered generation.
 
 ### 1.2 Key Capabilities
-- Custom storybook generation based on user inputs
+- Custom storybook and comic book generation based on user inputs
 - Multi-page illustrated narratives with consistent characters and style
+- Support for both traditional storybook and comic book formats
 - Library management for generated storybooks
 - Configurable LLM providers and generation settings
 - Story coherence validation and error correction
@@ -29,8 +30,9 @@ The primary interface for creating new storybooks.
   - Topic (text input)
   - Setting (text input, e.g., "enchanted forest", "outer space")
 
-- **Visual Style**
-  - Illustration Style (dropdown/text, e.g., "watercolor", "cartoon", "realistic")
+- **Format & Style**
+  - Story Format (dropdown: "Traditional Storybook" or "Comic Book")
+  - Illustration Style (dropdown/text, e.g., "watercolor", "cartoon", "realistic", "manga", "superhero comic", "graphic novel")
 
 - **Character Definitions**
   - User-described characters (multi-line text or structured form)
@@ -38,6 +40,7 @@ The primary interface for creating new storybooks.
 
 - **Book Configuration**
   - Number of Pages (numeric input)
+  - Panels per Page (numeric input, 1-9, only visible for Comic Book format)
 
 #### Actions
 - **Generate Story** - Initiates the story generation flow
@@ -53,6 +56,7 @@ Displays all previously generated storybooks.
 - Each entry shows:
   - Story title
   - Cover illustration (first page or generated cover)
+  - Format badge (Storybook or Comic Book)
   - Generation date
   - Audience age
   - Page count
@@ -67,8 +71,14 @@ Displays all previously generated storybooks.
 #### Reader Mode
 - Full-screen or modal view
 - Page-by-page navigation
-- Display illustration and text for each page
+- **Traditional Storybook Display**:
+  - Single illustration with accompanying text below/overlay
+- **Comic Book Display**:
+  - Panel-based layout (grid or custom arrangement)
+  - Speech bubbles and dialogue integrated into panels
+  - Sound effect text (POW!, BOOM!, etc.) for action scenes
 - Reading controls (previous, next, jump to page)
+- Format-adaptive layout (automatically adjusts based on story format)
 
 ### 2.3 Settings View
 
@@ -122,6 +132,8 @@ Configuration interface for application behavior and integrations.
 User Input → Initial Generation → Concurrent Page Generation → Assembly & Validation → Output
 ```
 
+The generation flow adapts based on the selected format (Traditional Storybook or Comic Book), with comic books requiring additional panel layout planning and dialogue formatting.
+
 ### 3.2 Detailed Flow
 
 #### Phase 1: Initial Generation (Coordinating Agent)
@@ -147,31 +159,59 @@ The coordinating agent processes form inputs to create:
    - Scene description for each page
    - Key actions/events per page
    - Character appearances per page
+   - **Comic Book Format Only**:
+     - Panel layout per page (e.g., "2x2 grid", "horizontal strip", "splash page")
+     - Panel-by-panel action breakdown
+     - Dialogue and speech bubble placement
+     - Sound effects placement
 
 5. **Illustration Style Guide**
    - Detailed style parameters based on user selection
    - Consistency guidelines for visual elements
    - Color palette suggestions
+   - **Comic Book Format Only**:
+     - Panel border style (clean, rough, borderless)
+     - Speech bubble style
+     - Font recommendations for dialogue and sound effects
 
 #### Phase 2: Concurrent Page Generation (Page Agents)
 Multiple agents work in parallel to generate each page:
 
-**For Each Page:**
+**For Traditional Storybook Pages:**
 - **Input**: Page outline, character descriptions, illustration style guide, story context
 - **Output**:
   - Page text (narrative for that page)
   - Illustration prompt (detailed prompt for image generation)
+
+**For Comic Book Pages:**
+- **Input**: Page outline, panel layout, character descriptions, illustration style guide, story context
+- **Output (per panel)**:
+  - Dialogue text with speaker attribution
+  - Action description for the panel
+  - Illustration prompt for the panel image
+  - Speech bubble positions and types (round, jagged, thought, narration box)
+  - Sound effects (if applicable)
+- **Output (page level)**:
+  - Panel arrangement instructions
+  - Transition flow between panels
 
 **Agent Responsibilities:**
 - Maintain narrative consistency with story outline
 - Use age-appropriate vocabulary and sentence structure
 - Ensure character consistency
 - Match tone and style across pages
-- Generate detailed illustration prompts that:
+- **Traditional Storybook**: Generate detailed illustration prompts that:
   - Specify characters in scene
   - Describe setting and mood
   - Include style directives
   - Maintain visual consistency
+- **Comic Book**: Generate panel-specific content that:
+  - Creates dynamic, visually interesting compositions per panel
+  - Balances dialogue and action
+  - Uses "show don't tell" principles
+  - Maintains reading flow (left-to-right, top-to-bottom)
+  - Incorporates dramatic angles and perspectives
+  - Includes expressive character poses and facial expressions
 
 #### Phase 3: Assembly and Validation (Coordinating Agent)
 Once all page agents complete:
@@ -199,9 +239,19 @@ Once all page agents complete:
    - Add to library
 
 #### Phase 4: Illustration Generation
+
+**Traditional Storybook:**
 - Process illustration prompts through image generation model
 - Apply illustrations to corresponding pages
 - Store final illustrated storybook
+
+**Comic Book:**
+- Process panel illustration prompts through image generation model (multiple per page)
+- Composite panels into page layouts with borders and gutters
+- Overlay speech bubbles and text using SVG or image manipulation
+- Position sound effects text
+- Apply any special effects (motion lines, impact stars, etc.)
+- Store final illustrated comic book
 
 ### 3.3 Agent Architecture
 
@@ -251,9 +301,11 @@ interface GenerationInputs {
   };
   topic: string;
   setting: string;
+  format: 'storybook' | 'comic';  // Story format
   illustrationStyle: string;
   characters: string[];  // User-described characters
   pageCount: number;
+  panelsPerPage?: number;  // Only for comic format (1-9)
 }
 ```
 
@@ -282,11 +334,35 @@ interface CharacterDescription {
 ```typescript
 interface Page {
   pageNumber: number;
-  text: string;
-  illustrationPrompt: string;
-  illustrationUrl?: string;
+  text: string;  // For storybook format
+  illustrationPrompt: string;  // For storybook format
+  illustrationUrl?: string;  // For storybook format
+  panels?: ComicPanel[];  // For comic format
+  layout?: string;  // Panel layout description for comic format
   generationAttempts: number;
   validated: boolean;
+}
+
+interface ComicPanel {
+  panelNumber: number;
+  dialogue: DialogueElement[];
+  action: string;  // Description of what's happening in the panel
+  illustrationPrompt: string;
+  illustrationUrl?: string;
+  soundEffects?: SoundEffect[];
+}
+
+interface DialogueElement {
+  speaker: string;  // Character name or "narrator"
+  text: string;
+  bubbleType: 'speech' | 'thought' | 'narration' | 'shout' | 'whisper';
+  position?: { x: number; y: number };  // Relative position in panel
+}
+
+interface SoundEffect {
+  text: string;  // e.g., "POW!", "CRASH!", "WHOOSH!"
+  position?: { x: number; y: number };
+  style?: string;  // Font style or effect type
 }
 ```
 
@@ -304,8 +380,10 @@ interface AppSettings {
     fallback?: ProviderConfig;
   };
   defaults: {
+    format: 'storybook' | 'comic';
     illustrationStyle: string;
     pageCount: number;
+    panelsPerPage: number;  // Default for comic format
   };
 }
 
@@ -328,12 +406,21 @@ interface ProviderConfig {
 - **State Management**: For generation progress tracking
 - **Responsive Design**: Desktop and tablet support
 - **Real-time Updates**: WebSocket or polling for generation progress
+- **Comic Book Rendering**:
+  - SVG or Canvas-based panel composition
+  - Speech bubble rendering library or custom component
+  - Text overlay capabilities for dialogue and sound effects
+  - Dynamic panel layout engine
 
 ### 5.2 Backend
 - **API Server**: RESTful or GraphQL API
 - **Agent Orchestration**: Multi-agent coordination system
-- **Queue System**: For managing concurrent page generations
+- **Queue System**: For managing concurrent page and panel generations
 - **Database**: Persistent storage for storybooks and settings
+- **Image Processing**: For comic book panel composition and text overlay
+  - Image manipulation library (Sharp, Pillow, ImageMagick)
+  - Text rendering with custom fonts
+  - Panel border and gutter generation
 
 ### 5.3 LLM Integration
 - **Text Generation**: OpenAI GPT-4, Claude, or compatible
@@ -406,7 +493,7 @@ interface ProviderConfig {
 ## 9. Future Enhancements (Optional)
 
 - Multi-language support
-- Text-to-speech for reading aloud
+- Text-to-speech for reading aloud (with voice acting for comic book dialogue)
 - Collaborative story creation
 - Story templates and themes
 - Print-on-demand integration
@@ -415,6 +502,15 @@ interface ProviderConfig {
 - Custom illustration model fine-tuning
 - Voice input for character descriptions
 - Accessibility features (screen reader support, high contrast)
+- **Comic Book Specific**:
+  - Advanced panel layouts (splash pages, inset panels, irregular shapes)
+  - Animated panel transitions for digital reading
+  - Custom speech bubble styles and tails
+  - Lettering font customization
+  - Sound effect library and auto-placement
+  - Page-to-page continuity checker for visual consistency
+  - Motion blur and speed lines for action scenes
+  - Manga/right-to-left reading mode support
 
 ## 10. Success Metrics
 
@@ -427,6 +523,10 @@ interface ProviderConfig {
 
 ---
 
-**Document Version**: 1.0
+**Document Version**: 1.1
 **Last Updated**: 2025-12-14
-**Status**: Initial Specification
+**Status**: Updated Specification
+
+## Revision History
+- **v1.1** (2025-12-14): Added comic book format support with panel-based generation, dialogue systems, and enhanced data models
+- **v1.0** (2025-12-14): Initial specification for traditional storybook generation

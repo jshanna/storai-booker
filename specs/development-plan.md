@@ -20,32 +20,48 @@ This document outlines the development roadmap for StorAI-Booker, a web applicat
 - **Build Tool**: Vite
 
 ### Backend
-- **Runtime**: Node.js 20+ with TypeScript
-- **Framework**: Express.js or Fastify
+- **Runtime**: Python 3.11+
+- **Framework**: FastAPI (recommended) or Flask
 - **API Style**: RESTful (can evolve to GraphQL later)
-- **Validation**: Zod or Joi
-- **Authentication**: JWT (for future user accounts)
+- **Validation**: Pydantic (built into FastAPI)
+- **Authentication**: JWT (for future user accounts) via python-jose
+- **ASGI Server**: Uvicorn with Gunicorn for production
 
 ### Database & Storage
 - **Primary Database**: PostgreSQL 15+
-- **ORM**: Prisma or TypeORM
-- **File Storage**: AWS S3 or MinIO (S3-compatible)
-- **Cache/Queue**: Redis for caching and Bull for job queues
-- **Image Processing**: Sharp (Node.js) or Pillow (Python)
+- **ORM**: SQLAlchemy 2.0+ (async support) or Django ORM
+- **Migrations**: Alembic
+- **File Storage**: AWS S3 or MinIO (S3-compatible) via boto3
+- **Cache/Queue**: Redis for caching and Celery for job queues
+- **Image Processing**: Pillow (PIL Fork) + OpenCV (optional)
 
 ### LLM & AI Integration
-- **Agent Framework**: LangChain or LangGraph
+- **Agent Framework**: LangChain (Python) or LangGraph
 - **Text Generation**: OpenAI API (GPT-4) or Anthropic Claude API
 - **Image Generation**:
   - DALL-E 3 (OpenAI)
   - Stable Diffusion via Replicate or local setup
 - **Orchestration**: Custom multi-agent system built on LangChain
 
+### Key Python Packages
+- **Web Framework**: fastapi, uvicorn, gunicorn
+- **Database**: sqlalchemy, alembic, asyncpg (PostgreSQL driver)
+- **Validation**: pydantic, pydantic-settings
+- **Job Queue**: celery, flower
+- **LLM**: langchain, langchain-openai, langchain-anthropic
+- **Image Processing**: pillow, opencv-python (optional), cairosvg
+- **Storage**: boto3, python-multipart
+- **Testing**: pytest, pytest-asyncio, pytest-cov, pytest-mock, httpx (async testing)
+- **Linting/Formatting**: ruff, black, mypy
+- **Logging**: structlog or loguru
+- **Security**: cryptography, passlib, python-jose, slowapi
+- **Utilities**: python-dotenv, redis, httpx
+
 ### DevOps & Deployment
 - **Containerization**: Docker + Docker Compose
 - **Hosting**:
   - Frontend: Vercel or Netlify
-  - Backend: Railway, Render, or AWS ECS
+  - Backend: Railway, Render, Fly.io, or AWS ECS (with Uvicorn/Gunicorn)
   - Database: Managed PostgreSQL (Supabase, Neon, or RDS)
 - **CI/CD**: GitHub Actions
 - **Monitoring**: Sentry (errors) + LogTail (logs)
@@ -59,10 +75,10 @@ This document outlines the development roadmap for StorAI-Booker, a web applicat
 
 #### Tasks
 1. **Repository & Version Control**
-   - Initialize monorepo structure (Turborepo or Nx recommended)
+   - Initialize monorepo structure (or separate frontend/backend repos)
    - Setup Git workflows (main, develop, feature branches)
-   - Configure pre-commit hooks (Husky + lint-staged)
-   - Create .gitignore and .env.example files
+   - Configure pre-commit hooks (pre-commit framework for Python)
+   - Create .gitignore (Python, Node, environment files) and .env.example files
 
 2. **Frontend Setup**
    - Initialize React + TypeScript + Vite project
@@ -82,25 +98,33 @@ This document outlines the development roadmap for StorAI-Booker, a web applicat
    - Configure routing structure
 
 3. **Backend Setup**
-   - Initialize Node.js + TypeScript + Express project
-   - Configure ESLint + Prettier
+   - Initialize Python project with Poetry or pip + virtual environment
+   - Setup FastAPI project structure
+   - Configure linting (Ruff or Flake8) + formatting (Black)
+   - Configure type checking (mypy)
    - Setup folder structure:
      ```
-     src/
-       controllers/
+     app/
+       api/
+         routes/
+         dependencies.py
        services/
+         agents/
+         llm/
+         storage/
        models/
-       routes/
-       middleware/
-       agents/
+       schemas/
+       core/
+         config.py
+         database.py
        utils/
-       types/
      ```
-   - Configure environment variables
+   - Configure environment variables (.env + pydantic-settings)
 
 4. **Database Setup**
    - Install PostgreSQL locally or setup managed instance
-   - Initialize Prisma schema
+   - Initialize SQLAlchemy models and database connection
+   - Setup Alembic for migrations
    - Create initial migration structure
    - Setup Redis locally or managed instance
 
@@ -124,15 +148,16 @@ This document outlines the development roadmap for StorAI-Booker, a web applicat
 **Goal**: Build foundational backend services and data persistence
 
 #### 1.1 Database Schema Implementation
-- **Define Prisma schema for core models**:
+- **Define SQLAlchemy models for core models**:
   - Storybook model
   - Page model
   - ComicPanel model (with JSON fields for complex data)
   - GenerationInputs embedded in Storybook
   - Settings model
-- **Create migrations**
+- **Create Pydantic schemas for request/response validation**
+- **Create Alembic migrations**
 - **Seed database with test data**
-- **Write database utility functions**
+- **Write database utility functions and async sessions**
 
 #### 1.2 Core API Endpoints
 - **Storybook CRUD**:
@@ -149,16 +174,17 @@ This document outlines the development roadmap for StorAI-Booker, a web applicat
   - `POST /api/settings/validate-api-key` - Test LLM connection
 
 #### 1.3 Request Validation & Error Handling
-- Implement Zod schemas for all API inputs
-- Create global error handler middleware
-- Setup request logging
-- Implement rate limiting
+- Implement Pydantic models for all API inputs/outputs
+- Create global exception handlers (FastAPI exception handlers)
+- Setup request logging middleware
+- Implement rate limiting (slowapi or custom middleware)
 
 #### 1.4 File Storage Service
-- Setup S3/MinIO client
-- Create upload service for images
-- Implement signed URL generation
+- Setup S3/MinIO client (boto3)
+- Create async upload service for images
+- Implement signed URL generation (presigned URLs)
 - Create delete/cleanup utilities
+- Add image optimization (Pillow)
 
 **Deliverables**: Working backend API, database with migrations, file storage
 
@@ -193,9 +219,9 @@ This document outlines the development roadmap for StorAI-Booker, a web applicat
 - **Create page agent worker system**:
   - Storybook page generator
   - Comic panel generator (handles multiple panels per page)
-- **Implement concurrent execution** (Bull queue)
+- **Implement concurrent execution** (Celery tasks)
 - **Add context management** (pass story outline, character info)
-- **Create prompt templates**:
+- **Create prompt templates** (using Jinja2 or LangChain templates):
   - Storybook narrative prompts
   - Comic dialogue and action prompts
   - Illustration prompt generation
@@ -214,14 +240,14 @@ This document outlines the development roadmap for StorAI-Booker, a web applicat
   - Status updates
 
 #### 2.5 Job Queue System
-- **Setup Bull queues**:
-  - Story generation queue
-  - Page generation queue
-  - Validation queue
-  - Image generation queue
-- **Implement job progress tracking**
-- **Add failure handling and retry logic**
-- **Create queue monitoring dashboard**
+- **Setup Celery with Redis broker**:
+  - Story generation tasks
+  - Page generation tasks
+  - Validation tasks
+  - Image generation tasks
+- **Implement task progress tracking** (Celery result backend)
+- **Add failure handling and retry logic** (Celery retry decorators)
+- **Create queue monitoring** (Flower dashboard for Celery)
 
 **Deliverables**: Complete agent orchestration system, working story generation
 
@@ -248,28 +274,28 @@ This document outlines the development roadmap for StorAI-Booker, a web applicat
 
 #### 3.3 Comic Book Composition Engine
 - **Panel Layout Engine**:
-  - Implement grid layouts (2x2, 3x1, etc.)
+  - Implement grid layouts (2x2, 3x1, etc.) using Pillow
   - Support custom panel arrangements
   - Add panel borders and gutters
   - Handle splash pages
 
 - **Speech Bubble Renderer**:
-  - Create SVG speech bubble components
+  - Generate SVG speech bubbles (cairosvg to rasterize)
   - Implement bubble types (speech, thought, narration, shout)
   - Add automatic tail positioning
-  - Support multi-line text wrapping
+  - Support multi-line text wrapping (PIL ImageDraw)
 
 - **Text Overlay System**:
-  - Dialogue text rendering
-  - Sound effect text rendering
+  - Dialogue text rendering (PIL ImageFont + ImageDraw)
+  - Sound effect text rendering with custom fonts
   - Font selection and sizing
   - Text positioning within panels
 
 - **Page Compositor**:
-  - Combine panels into final page
+  - Combine panels into final page (Pillow composite)
   - Apply borders and effects
-  - Export as high-quality image
-  - Generate web-optimized versions
+  - Export as high-quality PNG/JPEG
+  - Generate web-optimized versions (PIL optimize)
 
 #### 3.4 Image Storage & CDN
 - **Organize storage structure**:
@@ -405,10 +431,11 @@ This document outlines the development roadmap for StorAI-Booker, a web applicat
 
 #### 5.1 Testing
 - **Backend Tests**:
-  - Unit tests for services and utilities
-  - Integration tests for API endpoints
-  - Agent system tests (mocked LLM responses)
-  - Database integration tests
+  - Unit tests with pytest
+  - Integration tests for API endpoints (TestClient from FastAPI)
+  - Agent system tests (mocked LLM responses with pytest-mock)
+  - Database integration tests (pytest-asyncio for async tests)
+  - Code coverage with pytest-cov (target >80%)
 
 - **Frontend Tests**:
   - Component tests (React Testing Library)
@@ -441,15 +468,15 @@ This document outlines the development roadmap for StorAI-Booker, a web applicat
 
 #### 5.3 Security Hardening
 - **API Security**:
-  - Rate limiting per IP/user
-  - Request size limits
-  - SQL injection prevention (parameterized queries)
-  - XSS protection (sanitize inputs)
-  - CORS configuration
-  - Helmet.js security headers
+  - Rate limiting per IP/user (slowapi)
+  - Request size limits (FastAPI middleware)
+  - SQL injection prevention (SQLAlchemy ORM with parameterized queries)
+  - XSS protection (sanitize inputs with bleach or html-sanitizer)
+  - CORS configuration (FastAPI CORSMiddleware)
+  - Security headers (FastAPI middleware or secure.py)
 
 - **API Key Management**:
-  - Encrypt API keys at rest (crypto)
+  - Encrypt API keys at rest (cryptography.fernet or passlib)
   - Never expose in responses
   - Validate on each use
   - Rotation support
@@ -468,11 +495,12 @@ This document outlines the development roadmap for StorAI-Booker, a web applicat
   - Error boundary components (React)
 
 - **Logging**:
-  - Structured logging (Winston or Pino)
+  - Structured logging (structlog or loguru)
   - Log levels (debug, info, warn, error)
-  - Request/response logging
+  - Request/response logging (FastAPI middleware)
   - Performance metrics
   - LLM usage tracking
+  - JSON log formatting for production
 
 - **Monitoring**:
   - Setup Sentry for error tracking
@@ -494,7 +522,8 @@ This document outlines the development roadmap for StorAI-Booker, a web applicat
   - Deployment guide
 
 - **Code Documentation**:
-  - JSDoc comments for complex functions
+  - Python docstrings (Google or NumPy style) for all functions/classes
+  - Type hints throughout codebase
   - README files in major directories
   - Inline comments for non-obvious logic
 
@@ -512,10 +541,12 @@ This document outlines the development roadmap for StorAI-Booker, a web applicat
 
 - **Infrastructure**:
   - Setup production database (managed PostgreSQL)
-  - Configure Redis instance
+  - Configure Redis instance (for caching + Celery broker)
+  - Deploy Celery workers (separate containers/processes)
   - Setup S3 buckets with proper policies
   - CDN configuration (CloudFront or similar)
   - Domain and SSL certificates
+  - Flower dashboard for Celery monitoring (optional)
 
 - **Monitoring & Alerts**:
   - Application performance monitoring
@@ -709,7 +740,7 @@ For complete application with comic books:
 ### Team Composition (Ideal)
 - 1x Full-stack Engineer (Lead)
 - 1x Frontend Engineer (React specialist)
-- 1x Backend Engineer (Node.js + AI/ML experience)
+- 1x Backend Engineer (Python + FastAPI + AI/ML experience)
 - 1x UI/UX Designer
 - 1x QA Engineer (part-time)
 
@@ -737,7 +768,8 @@ For complete application with comic books:
 
 ### Decision Points
 - **Frontend Framework**: React recommended, confirm choice
-- **Backend Language**: Node.js recommended, confirm choice
+- **Backend Framework**: FastAPI vs Flask (FastAPI recommended for async support)
+- **Python Dependency Management**: Poetry vs pip + venv (Poetry recommended)
 - **LLM Provider**: OpenAI vs Anthropic vs both?
 - **Image Provider**: DALL-E vs Stable Diffusion vs both?
 - **Hosting**: Self-hosted vs managed services?
@@ -745,8 +777,19 @@ For complete application with comic books:
 
 ---
 
-**Document Version**: 1.0
+**Document Version**: 1.1
 **Created**: 2025-12-14
+**Last Updated**: 2025-12-14
 **Status**: Draft - Awaiting Approval
 **Estimated MVP Timeline**: 18 weeks
 **Estimated Full Version Timeline**: 24-32 weeks
+
+## Revision History
+- **v1.1** (2025-12-14): Updated backend to use Python 3.11+ with FastAPI instead of Node.js
+  - Changed from Express/Fastify to FastAPI
+  - Changed from Prisma/TypeORM to SQLAlchemy + Alembic
+  - Changed from Bull to Celery for job queues
+  - Updated all Python-specific libraries and tools
+  - Updated testing to use pytest
+  - Updated linting/formatting to Ruff/Black/mypy
+- **v1.0** (2025-12-14): Initial development plan with Node.js backend

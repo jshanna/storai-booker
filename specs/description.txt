@@ -1,0 +1,12 @@
+StorAI-Booker
+
+This application provides a web frontend with generation, library, and settings views for LLM generated storybooks. 
+
+Generation view provides a form to input audience information (age, gender), stopic, setting, illustration style, and user described characters. As well number of pages for final book.
+
+Library view provides access to generated story books, each storybook should have a "view" button to load the story into a reader, and a button to load the generate view with inputs that generated the story to allow generating similar stories.
+
+Settings view provides relevant story generation settings (allowed age ranges, nsfw toggle, etc), LLM providers settings (providers, API key), and anything else relevant to application configuration.
+
+Story Generation Flow:
+Form content is provided as initial generation for overarcing character descriptions, if relevant character relation map, story outline, page outlines, illustration style. Page outlines with illustration style, and character descriptions are used to concurrently generate page text, and illustration prompts using agents. Once all pages and illustrations have been returned by generating agents the coordinating agent assembles the output, and checks for coherence and consitency, regenerating any pages to correct errors (Retry limit should be included in application settings to avoid runaway LLM calls).

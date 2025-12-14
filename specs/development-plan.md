@@ -28,9 +28,9 @@ This document outlines the development roadmap for StorAI-Booker, a web applicat
 - **ASGI Server**: Uvicorn with Gunicorn for production
 
 ### Database & Storage
-- **Primary Database**: PostgreSQL 15+
-- **ORM**: SQLAlchemy 2.0+ (async support) or Django ORM
-- **Migrations**: Alembic
+- **Primary Database**: MongoDB 6.0+
+- **ODM**: Beanie (async ODM built on Pydantic) or Motor (async driver)
+- **Migrations**: Custom migration scripts or mongomigrate (schema flexibility reduces migration needs)
 - **File Storage**: AWS S3 or MinIO (S3-compatible) via boto3
 - **Cache/Queue**: Redis for caching and Celery for job queues
 - **Image Processing**: Pillow (PIL Fork) + OpenCV (optional)
@@ -45,7 +45,7 @@ This document outlines the development roadmap for StorAI-Booker, a web applicat
 
 ### Key Python Packages
 - **Web Framework**: fastapi, uvicorn, gunicorn
-- **Database**: sqlalchemy, alembic, asyncpg (PostgreSQL driver)
+- **Database**: motor (async MongoDB driver), beanie (async ODM), pymongo
 - **Validation**: pydantic, pydantic-settings
 - **Job Queue**: celery, flower
 - **LLM**: langchain, langchain-openai, langchain-anthropic
@@ -62,9 +62,24 @@ This document outlines the development roadmap for StorAI-Booker, a web applicat
 - **Hosting**:
   - Frontend: Vercel or Netlify
   - Backend: Railway, Render, Fly.io, or AWS ECS (with Uvicorn/Gunicorn)
-  - Database: Managed PostgreSQL (Supabase, Neon, or RDS)
+  - Database: MongoDB Atlas, AWS DocumentDB, or self-hosted MongoDB
 - **CI/CD**: GitHub Actions
 - **Monitoring**: Sentry (errors) + LogTail (logs)
+
+### Why MongoDB for StorAI-Booker?
+
+MongoDB is an excellent choice for this application due to:
+
+1. **Flexible Schema**: Stories can have varying structures (storybooks vs comics, different panel counts)
+2. **Nested Documents**: Naturally represents pages, panels, dialogue, and metadata in a single document
+3. **JSON-like Structure**: Aligns perfectly with Pydantic models and API responses
+4. **Scalability**: Easy horizontal scaling for growing story library
+5. **Rich Queries**: Supports complex filtering and aggregation for library views
+6. **Atlas Free Tier**: Free M0 cluster perfect for development and MVP
+7. **Native Array Support**: Ideal for storing panels, pages, and character arrays
+8. **GridFS**: Can store large files if needed (though S3 is preferred for images)
+9. **Async Support**: Motor and Beanie provide excellent async/await compatibility with FastAPI
+10. **No Migration Overhead**: Schema changes don't require complex migrations
 
 ---
 
@@ -112,27 +127,27 @@ This document outlines the development roadmap for StorAI-Booker, a web applicat
          agents/
          llm/
          storage/
-       models/
-       schemas/
+       models/          # Beanie ODM models
+       schemas/         # Pydantic schemas for API
        core/
-         config.py
-         database.py
+         config.py      # Settings and configuration
+         database.py    # MongoDB connection & initialization
        utils/
      ```
    - Configure environment variables (.env + pydantic-settings)
 
 4. **Database Setup**
-   - Install PostgreSQL locally or setup managed instance
-   - Initialize SQLAlchemy models and database connection
-   - Setup Alembic for migrations
-   - Create initial migration structure
+   - Install MongoDB locally (via Docker) or setup MongoDB Atlas free tier
+   - Initialize Beanie ODM models with Pydantic
+   - Configure MongoDB connection with Motor
+   - Create database indexes for common queries
    - Setup Redis locally or managed instance
 
 5. **Docker Configuration**
    - Create Dockerfile for frontend
-   - Create Dockerfile for backend
+   - Create Dockerfile for backend (Python 3.11+)
    - Create docker-compose.yml for local development
-   - Include PostgreSQL, Redis, and MinIO containers
+   - Include MongoDB, Redis, and MinIO containers
 
 6. **Documentation**
    - Create CONTRIBUTING.md
@@ -148,16 +163,19 @@ This document outlines the development roadmap for StorAI-Booker, a web applicat
 **Goal**: Build foundational backend services and data persistence
 
 #### 1.1 Database Schema Implementation
-- **Define SQLAlchemy models for core models**:
-  - Storybook model
-  - Page model
-  - ComicPanel model (with JSON fields for complex data)
+- **Define Beanie ODM models (Pydantic-based) for core collections**:
+  - Storybook document model
+  - Page subdocument/embedded model
+  - ComicPanel subdocument/embedded model
   - GenerationInputs embedded in Storybook
-  - Settings model
-- **Create Pydantic schemas for request/response validation**
-- **Create Alembic migrations**
+  - Settings document model
+- **Create Pydantic schemas for API request/response validation**
+- **Define MongoDB indexes for performance**:
+  - Index on storybook creation date
+  - Index on storybook format (storybook/comic)
+  - Compound index for filtering/sorting
 - **Seed database with test data**
-- **Write database utility functions and async sessions**
+- **Write database utility functions and async connection management**
 
 #### 1.2 Core API Endpoints
 - **Storybook CRUD**:
@@ -470,7 +488,7 @@ This document outlines the development roadmap for StorAI-Booker, a web applicat
 - **API Security**:
   - Rate limiting per IP/user (slowapi)
   - Request size limits (FastAPI middleware)
-  - SQL injection prevention (SQLAlchemy ORM with parameterized queries)
+  - NoSQL injection prevention (Pydantic validation, sanitize user inputs)
   - XSS protection (sanitize inputs with bleach or html-sanitizer)
   - CORS configuration (FastAPI CORSMiddleware)
   - Security headers (FastAPI middleware or secure.py)
@@ -540,7 +558,8 @@ This document outlines the development roadmap for StorAI-Booker, a web applicat
   - Database migration automation
 
 - **Infrastructure**:
-  - Setup production database (managed PostgreSQL)
+  - Setup production database (MongoDB Atlas M10+ or AWS DocumentDB)
+  - Configure MongoDB replica set for production reliability
   - Configure Redis instance (for caching + Celery broker)
   - Deploy Celery workers (separate containers/processes)
   - Setup S3 buckets with proper policies
@@ -748,11 +767,11 @@ For complete application with comic books:
 - **LLM APIs**: $500-2000 (varies with usage)
 - **Image Generation**: $300-1000 (varies with usage)
 - **Hosting**: $100-300 (Vercel + Railway/Render)
-- **Database**: $25-100 (managed PostgreSQL)
+- **Database**: $0-60 (MongoDB Atlas M0 free tier or M10 shared cluster $10-60/month)
 - **Storage**: $50-200 (S3/MinIO)
 - **Monitoring**: $0-100 (Sentry free tier initially)
 
-**Total Monthly: ~$1000-3700** (usage-dependent)
+**Total Monthly: ~$950-3660** (usage-dependent)
 
 ---
 
@@ -769,6 +788,7 @@ For complete application with comic books:
 ### Decision Points
 - **Frontend Framework**: React recommended, confirm choice
 - **Backend Framework**: FastAPI vs Flask (FastAPI recommended for async support)
+- **Database**: MongoDB Atlas (managed) vs self-hosted MongoDB vs AWS DocumentDB
 - **Python Dependency Management**: Poetry vs pip + venv (Poetry recommended)
 - **LLM Provider**: OpenAI vs Anthropic vs both?
 - **Image Provider**: DALL-E vs Stable Diffusion vs both?
@@ -777,7 +797,7 @@ For complete application with comic books:
 
 ---
 
-**Document Version**: 1.1
+**Document Version**: 1.2
 **Created**: 2025-12-14
 **Last Updated**: 2025-12-14
 **Status**: Draft - Awaiting Approval
@@ -785,6 +805,14 @@ For complete application with comic books:
 **Estimated Full Version Timeline**: 24-32 weeks
 
 ## Revision History
+- **v1.2** (2025-12-14): Updated database to use MongoDB instead of PostgreSQL
+  - Changed from PostgreSQL to MongoDB 6.0+
+  - Changed from SQLAlchemy + Alembic to Beanie ODM + Motor
+  - Removed need for complex migrations (schemaless design)
+  - Updated to use MongoDB Atlas for managed hosting
+  - Changed NoSQL injection prevention strategies
+  - Updated indexes for MongoDB query optimization
+  - Updated cost estimates for MongoDB Atlas pricing
 - **v1.1** (2025-12-14): Updated backend to use Python 3.11+ with FastAPI instead of Node.js
   - Changed from Express/Fastify to FastAPI
   - Changed from Prisma/TypeORM to SQLAlchemy + Alembic

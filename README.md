@@ -23,6 +23,7 @@ AI-powered storybook and comic book generation application using Large Language 
 - MongoDB (Beanie ODM + Motor)
 - Celery + Redis (job queues)
 - LangChain (AI orchestration)
+- LLM Providers: OpenAI, Anthropic Claude, Google Gemini
 - Pillow (image processing)
 - S3/MinIO (image storage)
 

@@ -48,6 +48,7 @@ class Settings(BaseSettings):
     # LLM Provider Settings
     openai_api_key: str = Field(default="", alias="OPENAI_API_KEY")
     anthropic_api_key: str = Field(default="", alias="ANTHROPIC_API_KEY")
+    google_api_key: str = Field(default="", alias="GOOGLE_API_KEY")
     default_llm_provider: str = Field(default="openai", alias="DEFAULT_LLM_PROVIDER")
     default_text_model: str = Field(default="gpt-4-turbo-preview", alias="DEFAULT_TEXT_MODEL")
     default_image_model: str = Field(default="dall-e-3", alias="DEFAULT_IMAGE_MODEL")

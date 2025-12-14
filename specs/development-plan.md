@@ -37,10 +37,11 @@ This document outlines the development roadmap for StorAI-Booker, a web applicat
 
 ### LLM & AI Integration
 - **Agent Framework**: LangChain (Python) or LangGraph
-- **Text Generation**: OpenAI API (GPT-4) or Anthropic Claude API
+- **Text Generation**: OpenAI API (GPT-4), Anthropic Claude API, or Google Gemini API
 - **Image Generation**:
   - DALL-E 3 (OpenAI)
   - Stable Diffusion via Replicate or local setup
+  - Imagen (Google, future support)
 - **Orchestration**: Custom multi-agent system built on LangChain
 
 ### Key Python Packages
@@ -48,7 +49,7 @@ This document outlines the development roadmap for StorAI-Booker, a web applicat
 - **Database**: motor (async MongoDB driver), beanie (async ODM), pymongo
 - **Validation**: pydantic, pydantic-settings
 - **Job Queue**: celery, flower
-- **LLM**: langchain, langchain-openai, langchain-anthropic
+- **LLM**: langchain, langchain-openai, langchain-anthropic, langchain-google-genai
 - **Image Processing**: pillow, opencv-python (optional), cairosvg
 - **Storage**: boto3, python-multipart
 - **Testing**: pytest, pytest-asyncio, pytest-cov, pytest-mock, httpx (async testing)
@@ -790,7 +791,7 @@ For complete application with comic books:
 - **Backend Framework**: FastAPI vs Flask (FastAPI recommended for async support)
 - **Database**: MongoDB Atlas (managed) vs self-hosted MongoDB vs AWS DocumentDB
 - **Python Dependency Management**: Poetry vs pip + venv (Poetry recommended)
-- **LLM Provider**: OpenAI vs Anthropic vs both?
+- **LLM Provider**: OpenAI vs Anthropic vs Google Gemini vs multiple?
 - **Image Provider**: DALL-E vs Stable Diffusion vs both?
 - **Hosting**: Self-hosted vs managed services?
 - **Scope**: MVP first or build full features from start?

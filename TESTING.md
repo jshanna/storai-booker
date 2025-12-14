@@ -106,7 +106,7 @@ poetry show
 cp .env.example .env
 
 # Edit .env file and set (optional for basic testing):
-# - OPENAI_API_KEY or ANTHROPIC_API_KEY
+# - OPENAI_API_KEY, ANTHROPIC_API_KEY, or GOOGLE_API_KEY
 # - Other values can use defaults
 ```
 

@@ -31,7 +31,7 @@ class GenerationLimits(BaseModel):
 class LLMProviderConfig(BaseModel):
     """LLM provider configuration."""
 
-    name: str = Field(..., description="Provider name (openai, anthropic)")
+    name: str = Field(..., description="Provider name (openai, anthropic, google)")
     api_key: str = Field(default="", description="API key (encrypted)")
     endpoint: Optional[str] = Field(None, description="Custom API endpoint")
     text_model: str = Field(default="gpt-4-turbo-preview", description="Text generation model")

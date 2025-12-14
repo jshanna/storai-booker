@@ -11,6 +11,7 @@ docker compose up -d
 # 2. Backend (new terminal)
 cd backend
 cp .env.example .env
+# Optional: Edit .env and add OPENAI_API_KEY, ANTHROPIC_API_KEY, or GOOGLE_API_KEY
 poetry install
 poetry shell
 python main.py

@@ -113,10 +113,11 @@ async def root():
 
 
 # Include API routers
-from app.api import stories, settings
+from app.api import stories
+from app.api import settings as settings_router
 
 app.include_router(stories.router, prefix="/api/stories", tags=["stories"])
-app.include_router(settings.router, prefix="/api/settings", tags=["settings"])
+app.include_router(settings_router.router, prefix="/api/settings", tags=["settings"])
 
 
 if __name__ == "__main__":

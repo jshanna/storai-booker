@@ -76,17 +76,13 @@ class GoogleGeminiProvider(BaseLLMProvider):
             # Build message
             message = HumanMessage(content=prompt)
 
-            # Add max_output_tokens if specified
-            invoke_kwargs = {}
-            if max_tokens:
-                invoke_kwargs["max_output_tokens"] = max_tokens
-
-            # Merge additional kwargs
-            invoke_kwargs.update(kwargs)
+            # Note: max_tokens is handled by the client configuration
+            # ChatGoogleGenerativeAI doesn't accept max_output_tokens in ainvoke()
+            # If you need to control output length, set it during client init
 
             # Generate
             logger.debug(f"Generating text with Gemini ({self.model})")
-            response = await client.ainvoke([message], **invoke_kwargs)
+            response = await client.ainvoke([message])
 
             # Extract text content
             text = response.content

@@ -12,6 +12,7 @@ from app.schemas.story import (
     StoryStatusResponse,
     PageResponse,
 )
+from app.tasks.story_generation import generate_story_task
 
 router = APIRouter()
 
@@ -35,8 +36,9 @@ async def generate_story(request: StoryCreateRequest):
         await storybook.insert()
         logger.info(f"Created story {storybook.id} - {storybook.title}")
 
-        # TODO: Phase 2 - Queue generation job with Celery
-        # celery_app.send_task('app.tasks.generate_story', args=[str(storybook.id)])
+        # Queue generation job with Celery
+        task = generate_story_task.delay(str(storybook.id))
+        logger.info(f"Queued story generation task {task.id} for story {storybook.id}")
 
         return StoryResponse(
             id=str(storybook.id),

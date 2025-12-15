@@ -51,7 +51,14 @@ class Settings(BaseSettings):
     google_api_key: str = Field(default="", alias="GOOGLE_API_KEY")
     default_llm_provider: str = Field(default="openai", alias="DEFAULT_LLM_PROVIDER")
     default_text_model: str = Field(default="gpt-4-turbo-preview", alias="DEFAULT_TEXT_MODEL")
-    default_image_model: str = Field(default="dall-e-3", alias="DEFAULT_IMAGE_MODEL")
+    default_image_model: str = Field(default="gemini-2.0-flash-exp", alias="DEFAULT_IMAGE_MODEL")
+
+    # Image Generation Settings
+    image_aspect_ratio: str = Field(default="16:9", alias="IMAGE_ASPECT_RATIO")
+    image_max_retries: int = Field(default=3, alias="IMAGE_MAX_RETRIES")
+    image_generation_timeout: int = Field(default=60, alias="IMAGE_GENERATION_TIMEOUT")
+    cover_aspect_ratio: str = Field(default="3:4", alias="COVER_ASPECT_RATIO")
+    cover_font_path: str | None = Field(default=None, alias="COVER_FONT_PATH")
 
     # Story Generation Settings
     default_age_min: int = Field(default=3, alias="DEFAULT_AGE_MIN")

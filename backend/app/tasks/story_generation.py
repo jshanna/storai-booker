@@ -13,6 +13,10 @@ from app.services.llm.provider_factory import LLMProviderFactory
 from app.services.agents.coordinator import CoordinatorAgent
 from app.services.agents.page_generator import PageGeneratorAgent
 from app.services.agents.validator import ValidatorAgent
+from app.services.image.provider_factory import ImageProviderFactory
+from app.services.image.compositor import ImageCompositor
+from app.services.image.base import BaseImageProvider
+from app.services.storage import storage_service
 
 
 # MongoDB connection management for Celery workers
@@ -153,6 +157,7 @@ async def _generate_story_workflow(story_id: str, task) -> dict:
     )
 
     llm_provider = LLMProviderFactory.create_from_settings()
+    image_provider = ImageProviderFactory.create_from_settings()
     coordinator = CoordinatorAgent(llm_provider)
 
     metadata = await coordinator.plan_story(story.generation_inputs)
@@ -191,6 +196,29 @@ async def _generate_story_workflow(story_id: str, task) -> dict:
         story.pages.append(page)
         await story.save()
 
+        # Generate and upload illustration for this page
+        try:
+            logger.info(f"Generating illustration for page {page_number}")
+            illustration_url = await _generate_page_illustration(
+                page=page,
+                story_id=str(story.id),
+                image_provider=image_provider,
+                max_retries=settings.image_max_retries,
+            )
+
+            if illustration_url:
+                # Update page with illustration URL
+                page.illustration_url = illustration_url
+                story.pages[-1] = page  # Update the last page in the list
+                await story.save()
+                logger.info(f"Illustration URL saved for page {page_number}")
+            else:
+                logger.warning(f"Failed to generate illustration for page {page_number}, continuing without it")
+
+        except Exception as e:
+            logger.error(f"Error generating illustration for page {page_number}: {e}")
+            # Continue without image (graceful degradation)
+
         # Update progress
         progress = 0.3 + (0.5 * (page_number / story.generation_inputs.page_count))
         task.update_state(
@@ -222,6 +250,25 @@ async def _generate_story_workflow(story_id: str, task) -> dict:
             page.validated = True
         story.status = "complete"
         await story.save()
+
+        # Generate cover image
+        try:
+            logger.info("Generating cover image...")
+            cover_url = await _generate_cover_image(
+                story=story,
+                image_provider=image_provider,
+            )
+
+            if cover_url:
+                story.cover_image_url = cover_url
+                await story.save()
+                logger.info(f"Cover image URL saved: {cover_url}")
+            else:
+                logger.warning("Failed to generate cover image, continuing without it")
+
+        except Exception as e:
+            logger.error(f"Error generating cover image: {e}")
+            # Continue without cover (graceful degradation)
 
     else:
         logger.warning(
@@ -277,11 +324,49 @@ async def _generate_story_workflow(story_id: str, task) -> dict:
 
             await story.save()
 
+            # Generate cover image after regeneration
+            try:
+                logger.info("Generating cover image after regeneration...")
+                cover_url = await _generate_cover_image(
+                    story=story,
+                    image_provider=image_provider,
+                )
+
+                if cover_url:
+                    story.cover_image_url = cover_url
+                    await story.save()
+                    logger.info(f"Cover image URL saved: {cover_url}")
+                else:
+                    logger.warning("Failed to generate cover image, continuing without it")
+
+            except Exception as e:
+                logger.error(f"Error generating cover image: {e}")
+                # Continue without cover (graceful degradation)
+
         else:
             # Only minor issues, mark as complete
             logger.info("Only minor issues found, marking as complete")
             story.status = "complete"
             await story.save()
+
+            # Generate cover image for minor issues case
+            try:
+                logger.info("Generating cover image...")
+                cover_url = await _generate_cover_image(
+                    story=story,
+                    image_provider=image_provider,
+                )
+
+                if cover_url:
+                    story.cover_image_url = cover_url
+                    await story.save()
+                    logger.info(f"Cover image URL saved: {cover_url}")
+                else:
+                    logger.warning("Failed to generate cover image, continuing without it")
+
+            except Exception as e:
+                logger.error(f"Error generating cover image: {e}")
+                # Continue without cover (graceful degradation)
 
     task.update_state(
         state="PROGRESS",
@@ -444,3 +529,192 @@ async def _validate_story_workflow(story_id: str) -> dict:
         ],
         "suggestions": validation_output.suggestions,
     }
+
+
+async def _generate_page_illustration(
+    page: Page,
+    story_id: str,
+    image_provider: BaseImageProvider,
+    max_retries: int = 3,
+) -> Optional[str]:
+    """
+    Generate and upload illustration for a page with retry logic.
+
+    Args:
+        page: Page with illustration_prompt
+        story_id: Story ID for storage path
+        image_provider: Image generation provider
+        max_retries: Maximum number of retry attempts
+
+    Returns:
+        Signed URL to the uploaded illustration, or None if generation fails
+
+    Raises:
+        Exception: If all retries are exhausted
+    """
+    for attempt in range(max_retries):
+        try:
+            logger.info(
+                f"Generating illustration for page {page.page_number} "
+                f"(attempt {attempt + 1}/{max_retries})"
+            )
+
+            # Generate image from prompt
+            illustration_bytes = await image_provider.generate_image(
+                prompt=page.illustration_prompt,
+                aspect_ratio=settings.image_aspect_ratio,
+            )
+
+            logger.info(
+                f"Generated illustration for page {page.page_number} "
+                f"({len(illustration_bytes)} bytes)"
+            )
+
+            # Upload to storage
+            filename = f"page_{page.page_number}.png"
+            object_key = await storage_service.upload_from_bytes(
+                story_id=story_id,
+                filename=filename,
+                data=illustration_bytes,
+                content_type="image/png",
+            )
+
+            logger.info(f"Uploaded illustration for page {page.page_number}: {object_key}")
+
+            # Get signed URL (30 days expiration)
+            illustration_url = await storage_service.get_signed_url(
+                object_key=object_key,
+                expiration=86400 * 30,  # 30 days
+            )
+
+            return illustration_url
+
+        except Exception as e:
+            logger.error(
+                f"Failed to generate illustration for page {page.page_number} "
+                f"(attempt {attempt + 1}/{max_retries}): {e}"
+            )
+
+            if attempt >= max_retries - 1:
+                # All retries exhausted
+                logger.error(
+                    f"Exhausted all {max_retries} retries for page {page.page_number} illustration"
+                )
+                return None
+
+            # Exponential backoff
+            wait_time = 2 ** attempt
+            logger.info(f"Retrying in {wait_time} seconds...")
+            await asyncio.sleep(wait_time)
+
+    return None
+
+
+async def _generate_cover_image(
+    story: Storybook,
+    image_provider: BaseImageProvider,
+) -> Optional[str]:
+    """
+    Generate cover image with title overlay.
+
+    Args:
+        story: Complete storybook with metadata
+        image_provider: Image generation provider
+
+    Returns:
+        Signed URL to the uploaded cover image, or None if generation fails
+    """
+    try:
+        logger.info(f"Generating cover image for '{story.title}'")
+
+        # Build cover prompt from story metadata
+        cover_prompt = _build_cover_prompt(story)
+
+        # Generate base cover image (portrait aspect ratio)
+        cover_bytes = await image_provider.generate_image(
+            prompt=cover_prompt,
+            aspect_ratio=settings.cover_aspect_ratio,
+        )
+
+        logger.info(f"Generated base cover image ({len(cover_bytes)} bytes)")
+
+        # Composite title overlay
+        compositor = ImageCompositor(font_path=settings.cover_font_path)
+        final_cover = await compositor.create_cover_with_title(
+            image_bytes=cover_bytes,
+            title=story.title,
+        )
+
+        logger.info(f"Composited title overlay ({len(final_cover)} bytes)")
+
+        # Upload to storage
+        object_key = await storage_service.upload_from_bytes(
+            story_id=str(story.id),
+            filename="cover.png",
+            data=final_cover,
+            content_type="image/png",
+        )
+
+        logger.info(f"Uploaded cover image: {object_key}")
+
+        # Get signed URL (30 days expiration)
+        cover_url = await storage_service.get_signed_url(
+            object_key=object_key,
+            expiration=86400 * 30,  # 30 days
+        )
+
+        return cover_url
+
+    except Exception as e:
+        logger.error(f"Failed to generate cover image: {e}")
+        return None
+
+
+def _build_cover_prompt(story: Storybook) -> str:
+    """
+    Build cover image prompt from story metadata.
+
+    Creates a detailed prompt that captures the essence of the story
+    for generating an eye-catching cover illustration.
+
+    Args:
+        story: Storybook with metadata and inputs
+
+    Returns:
+        Cover image prompt string
+    """
+    metadata = story.metadata
+    inputs = story.generation_inputs
+
+    # Get main characters (protagonists first)
+    main_chars = [
+        c for c in metadata.character_descriptions
+        if c.role == "protagonist"
+    ][:2]  # Limit to 2 main characters
+
+    # Build character description
+    if main_chars:
+        char_desc = ", ".join([
+            f"{c.name} ({c.physical_description})"
+            for c in main_chars
+        ])
+    else:
+        char_desc = "the main character"
+
+    # Build comprehensive cover prompt
+    prompt = f"""Create a captivating storybook cover illustration for "{story.title}".
+
+Setting: {inputs.setting}
+Main Characters: {char_desc}
+Story Theme: {inputs.topic}
+Illustration Style: {metadata.illustration_style_guide}
+Target Age: {inputs.audience_age} years old
+
+The cover should be eye-catching and magical, showing the main characters in the story's
+primary setting. The composition should be dramatic and inviting, drawing young readers in.
+Leave the bottom third of the image relatively clear and uncluttered for title text overlay.
+
+The overall mood should be {inputs.setting.split()[0] if inputs.setting else "magical"} and
+adventurous, perfectly capturing the essence of this children's {inputs.format}."""
+
+    return prompt

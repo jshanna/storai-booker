@@ -150,7 +150,9 @@ This system is not yet implemented (Phase 2) but shapes the data models and API 
 The application supports multiple LLM providers (implementation in Phase 2):
 - **OpenAI**: GPT-4 for text, DALL-E 3 for images
 - **Anthropic**: Claude for text generation
-- **Google**: Gemini for text, Imagen for images (see `docs/GEMINI_MODELS.md`)
+- **Google**: Gemini for text, Gemini 2.5 Flash Image for image generation (see `docs/GEMINI_MODELS.md`)
+  - Image Generation: https://ai.google.dev/gemini-api/docs/image-generation
+  - Consistent Character Imagery: https://github.com/GoogleCloudPlatform/generative-ai/blob/main/gemini/use-cases/media-generation/consistent_imagery_generation.ipynb
 
 Provider configuration stored in Settings model with API keys encrypted at rest.
 
@@ -337,6 +339,8 @@ app_settings = await get_settings()
 - **Phase 1 Testing**: `PHASE1_TESTING.md` - Detailed API testing guide
 - **Quick Start**: `QUICK_START.md` - 5-minute setup guide
 - **Gemini Models**: `docs/GEMINI_MODELS.md` - Google Gemini provider documentation
+- **Gemini Image Generation**: https://ai.google.dev/gemini-api/docs/image-generation - Official Gemini image generation API docs
+- **Consistent Character Imagery**: https://github.com/GoogleCloudPlatform/generative-ai/blob/main/gemini/use-cases/media-generation/consistent_imagery_generation.ipynb - Guide for character consistency with reference images
 
 ## Known Limitations
 

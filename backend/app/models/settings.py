@@ -20,6 +20,30 @@ class ContentFilterSettings(BaseModel):
     scary_content: bool = Field(default=False)
 
 
+class SafetySettings(BaseModel):
+    """AI safety filter settings for LLM providers."""
+
+    # Safety threshold: controls how strict safety filters are
+    # Options: "block_none", "block_only_high", "block_medium_and_above", "block_low_and_above"
+    safety_threshold: str = Field(
+        default="block_medium_and_above",
+        pattern="^(block_none|block_only_high|block_medium_and_above|block_low_and_above)$",
+        description="Safety filter threshold for AI providers"
+    )
+
+    # Allow adult content in generated images (18+ characters)
+    allow_adult_imagery: bool = Field(
+        default=False,
+        description="Allow adult characters in image generation"
+    )
+
+    # Bypass safety filters entirely (use with caution)
+    bypass_safety_filters: bool = Field(
+        default=False,
+        description="Completely disable AI safety filters (not recommended)"
+    )
+
+
 class GenerationLimits(BaseModel):
     """Generation limit settings."""
 
@@ -53,6 +77,7 @@ class AppSettings(Document):
     user_id: Optional[str] = Field(default="default", description="User ID (for future multi-user support)")
     age_range: AgeRangeSettings = Field(default_factory=AgeRangeSettings)
     content_filters: ContentFilterSettings = Field(default_factory=ContentFilterSettings)
+    safety_settings: SafetySettings = Field(default_factory=SafetySettings)
     generation_limits: GenerationLimits = Field(default_factory=GenerationLimits)
     primary_llm_provider: LLMProviderConfig = Field(
         default_factory=lambda: LLMProviderConfig(name="openai")

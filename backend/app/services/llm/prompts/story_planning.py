@@ -8,6 +8,9 @@ from app.models.storybook import GenerationInputs, CharacterDescription
 class StoryPlanningOutput(BaseModel):
     """Structured output for story planning."""
 
+    title: str = Field(
+        description="Catchy, engaging book title that captures the story's essence (3-8 words)"
+    )
     character_descriptions: List[CharacterDescription] = Field(
         description="Detailed descriptions of all characters in the story"
     )
@@ -56,26 +59,32 @@ def build_story_planning_prompt(inputs: GenerationInputs) -> str:
 **Your Task:**
 Create a complete story plan including:
 
-1. **Character Descriptions**: For each character mentioned, provide:
+1. **Title**: Create a catchy, engaging book title (3-8 words) that:
+   - Captures the essence of the story
+   - Is age-appropriate and appealing to the target audience
+   - Hints at the adventure or lesson without giving everything away
+   - Uses alliteration or rhythm when possible for memorability
+
+2. **Character Descriptions**: For each character mentioned, provide:
    - Name
    - Physical description (appearance, clothing, distinguishing features)
    - Personality traits
    - Role in the story (protagonist, sidekick, antagonist, etc.)
 
-2. **Character Relations**: Describe how the characters interact and relate to each other (if multiple characters)
+3. **Character Relations**: Describe how the characters interact and relate to each other (if multiple characters)
 
-3. **Story Outline**: Write a complete narrative arc with:
+4. **Story Outline**: Write a complete narrative arc with:
    - Beginning: Setup and introduction
    - Middle: Conflict, adventure, or learning experience
    - End: Resolution with a positive moral or lesson
 
-4. **Page Outlines**: Create exactly {inputs.page_count} page outlines. Each outline should:
+5. **Page Outlines**: Create exactly {inputs.page_count} page outlines. Each outline should:
    - Describe what happens on that page
    - Mention which characters appear
    - Note key actions or dialogue
    - Flow naturally from the previous page
 
-5. **Illustration Style Guide**: Provide detailed guidance for consistent visuals:
+6. **Illustration Style Guide**: Provide detailed guidance for consistent visuals:
    - Color palette suggestions
    - Artistic style details (e.g., "soft watercolors with gentle brushstrokes")
    - Mood and atmosphere

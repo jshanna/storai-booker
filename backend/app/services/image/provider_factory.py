@@ -18,7 +18,7 @@ class ImageProviderFactory:
     @staticmethod
     def create_google_imagen(
         api_key: str,
-        model: str = "gemini-2.0-flash-exp",
+        model: str = "gemini-2.5-flash-image",
         aspect_ratio: str = "16:9",
         temperature: float = 1.0,
     ) -> GoogleImagenProvider:
@@ -27,9 +27,9 @@ class ImageProviderFactory:
 
         Args:
             api_key: Google API key
-            model: Gemini model name
+            model: Gemini image model name (e.g., gemini-2.5-flash-image)
             aspect_ratio: Default aspect ratio
-            temperature: Sampling temperature
+            temperature: Sampling temperature (not used for image generation)
 
         Returns:
             Configured GoogleImagenProvider instance
@@ -40,13 +40,59 @@ class ImageProviderFactory:
         if not api_key:
             raise ValueError("Google API key is required")
 
-        logger.info(f"Creating Google Imagen provider with model: {model}")
+        logger.info(f"Creating Google Gemini image provider with model: {model}")
         return GoogleImagenProvider(
             api_key=api_key,
             model=model,
             aspect_ratio=aspect_ratio,
             temperature=temperature,
         )
+
+    @staticmethod
+    def create_from_db_settings(
+        db_settings,  # AppSettings from database
+        use_fallback: bool = False,
+    ) -> BaseImageProvider:
+        """
+        Create image provider from database settings (AppSettings model).
+
+        Args:
+            db_settings: AppSettings instance from database
+            use_fallback: If True, use fallback provider instead of primary
+
+        Returns:
+            Configured image provider instance
+
+        Raises:
+            ValueError: If provider is not configured
+        """
+        # Get the appropriate provider config
+        provider_config = db_settings.fallback_llm_provider if use_fallback else db_settings.primary_llm_provider
+
+        if not provider_config:
+            raise ValueError("No LLM provider configured in database settings")
+
+        provider_name = provider_config.name
+        api_key = provider_config.api_key
+        model = provider_config.image_model
+
+        if not api_key:
+            raise ValueError(f"No API key configured for {provider_name} in database settings")
+
+        logger.info(f"Creating image provider from database: {provider_name} with model: {model}")
+
+        if provider_name == "google":
+            return ImageProviderFactory.create_google_imagen(
+                api_key=api_key,
+                model=model,
+                aspect_ratio=settings.image_aspect_ratio,
+                temperature=1.0,
+            )
+        else:
+            raise ValueError(
+                f"Unsupported image provider: {provider_name}. "
+                f"Supported providers: google"
+            )
 
     @staticmethod
     def create_from_settings(

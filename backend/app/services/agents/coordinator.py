@@ -85,6 +85,7 @@ class CoordinatorAgent:
 
             # Convert to StoryMetadata
             metadata = StoryMetadata(
+                title=planning_output.title,
                 character_descriptions=planning_output.character_descriptions,
                 character_relations=planning_output.character_relations,
                 story_outline=planning_output.story_outline,

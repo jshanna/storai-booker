@@ -2,6 +2,7 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from loguru import logger
@@ -51,6 +52,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Configure response compression (GZip)
+# Compresses responses larger than 500 bytes with minimum quality of 5
+app.add_middleware(GZipMiddleware, minimum_size=500, compresslevel=5)
 
 # Register error handlers
 app.add_exception_handler(StarletteHTTPException, http_exception_handler)

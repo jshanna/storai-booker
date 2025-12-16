@@ -2,6 +2,7 @@
 from typing import Optional
 from beanie import Document
 from pydantic import BaseModel, Field
+from pymongo import IndexModel
 
 
 class AgeRangeSettings(BaseModel):
@@ -89,6 +90,9 @@ class AppSettings(Document):
         """Beanie document settings."""
 
         name = "app_settings"
+        indexes = [
+            IndexModel([("user_id", 1)], unique=True),  # Unique index on user_id
+        ]
 
     class Config:
         """Pydantic config."""

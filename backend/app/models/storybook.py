@@ -70,10 +70,15 @@ class Storybook(Document):
 
         name = "storybooks"
         indexes = [
+            # Single field indexes
             IndexModel([("created_at", DESCENDING)]),
             IndexModel([("generation_inputs.format", 1)]),
             IndexModel([("status", 1)]),
             IndexModel([("title", "text")]),  # Text search on title
+            # Compound indexes for common filter combinations
+            IndexModel([("status", 1), ("created_at", DESCENDING)]),
+            IndexModel([("generation_inputs.format", 1), ("created_at", DESCENDING)]),
+            IndexModel([("status", 1), ("generation_inputs.format", 1), ("created_at", DESCENDING)]),
         ]
 
     class Config:

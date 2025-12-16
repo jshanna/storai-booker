@@ -17,6 +17,7 @@ from app.services.agents.validator import ValidatorAgent
 from app.services.image.provider_factory import ImageProviderFactory
 from app.services.image.base import BaseImageProvider
 from app.services.storage import storage_service
+from app.services.cache import cache_service
 import httpx
 
 
@@ -99,6 +100,10 @@ async def _update_story_status(
             story.error_message = error_message
         await story.save()
         logger.info(f"Story {story_id} status updated to: {status}")
+
+        # Invalidate cache when story is updated
+        cache_service.delete(f"story:{story_id}")
+        cache_service.delete_pattern("stories:list:*")
 
 
 async def _download_image_from_url(url: str) -> Optional[bytes]:

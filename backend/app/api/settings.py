@@ -4,6 +4,7 @@ from loguru import logger
 
 from app.models.settings import AppSettings
 from app.schemas.settings import SettingsUpdateRequest, SettingsResponse
+from app.services.cache import cache_service
 
 router = APIRouter()
 
@@ -17,6 +18,15 @@ async def get_settings():
     this will be scoped to the authenticated user.
     """
     try:
+        # Build cache key
+        cache_key = "settings:default"
+
+        # Try to get from cache
+        cached = cache_service.get(cache_key)
+        if cached:
+            logger.debug("Cache hit for settings")
+            return SettingsResponse(**cached)
+
         # Get or create default settings
         settings = await AppSettings.find_one({"user_id": "default"})
 
@@ -26,7 +36,7 @@ async def get_settings():
             await settings.insert()
             logger.info("Created default application settings")
 
-        return SettingsResponse(
+        response = SettingsResponse(
             id=str(settings.id),
             user_id=settings.user_id,
             age_range=settings.age_range,
@@ -36,6 +46,11 @@ async def get_settings():
             fallback_llm_provider=settings.fallback_llm_provider,
             defaults=settings.defaults,
         )
+
+        # Cache the response (TTL: 10 minutes for settings)
+        cache_service.set(cache_key, response.model_dump(), ttl=600)
+
+        return response
     except Exception as e:
         logger.error(f"Failed to get settings: {e}")
         raise HTTPException(
@@ -68,6 +83,9 @@ async def update_settings(request: SettingsUpdateRequest):
 
         await settings.save()
         logger.info("Updated application settings")
+
+        # Invalidate cache
+        cache_service.delete("settings:default")
 
         return SettingsResponse(
             id=str(settings.id),
@@ -105,6 +123,9 @@ async def reset_settings():
         settings = AppSettings(user_id="default")
         await settings.insert()
         logger.info("Reset settings to defaults")
+
+        # Invalidate cache
+        cache_service.delete("settings:default")
 
         return SettingsResponse(
             id=str(settings.id),

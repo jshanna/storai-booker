@@ -11,10 +11,9 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { FileText, Users, Sparkles } from 'lucide-react';
+import { FileText, Users } from 'lucide-react';
 import type { Story } from '@/types/api';
 
 interface GenerationArtifactsProps {

@@ -13,6 +13,7 @@ from app.schemas.story import (
     PageResponse,
 )
 from app.tasks.story_generation import generate_story_task
+from app.services.cache import cache_service
 
 router = APIRouter()
 
@@ -35,6 +36,9 @@ async def generate_story(request: StoryCreateRequest):
 
         await storybook.insert()
         logger.info(f"Created story {storybook.id} - {storybook.title}")
+
+        # Invalidate stories list cache (new story added)
+        cache_service.delete_pattern("stories:list:*")
 
         # Queue generation job with Celery
         task = generate_story_task.delay(str(storybook.id))
@@ -77,6 +81,15 @@ async def list_stories(
     - Text search in title
     """
     try:
+        # Build cache key from query parameters
+        cache_key = f"stories:list:{page}:{page_size}:{format or 'all'}:{status or 'all'}:{search or ''}"
+
+        # Try to get from cache
+        cached = cache_service.get(cache_key)
+        if cached:
+            logger.debug(f"Cache hit for stories list: {cache_key}")
+            return StoryListResponse(**cached)
+
         # Build query filters
         query = {}
         if format:
@@ -94,7 +107,7 @@ async def list_stories(
         skip = (page - 1) * page_size
         stories = await Storybook.find(query).sort("-created_at").skip(skip).limit(page_size).to_list()
 
-        return StoryListResponse(
+        response = StoryListResponse(
             stories=[
                 StoryResponse(
                     id=str(story.id),
@@ -114,6 +127,11 @@ async def list_stories(
             page=page,
             page_size=page_size,
         )
+
+        # Cache the response (TTL: 2 minutes for list endpoints)
+        cache_service.set(cache_key, response.model_dump(), ttl=120)
+
+        return response
     except Exception as e:
         logger.error(f"Failed to list stories: {e}")
         raise HTTPException(
@@ -128,6 +146,15 @@ async def get_story(story_id: str):
     Get a specific story by ID.
     """
     try:
+        # Build cache key
+        cache_key = f"story:{story_id}"
+
+        # Try to get from cache
+        cached = cache_service.get(cache_key)
+        if cached:
+            logger.debug(f"Cache hit for story: {story_id}")
+            return StoryResponse(**cached)
+
         # Validate ObjectId
         try:
             obj_id = PydanticObjectId(story_id)
@@ -145,7 +172,7 @@ async def get_story(story_id: str):
                 detail=f"Story {story_id} not found",
             )
 
-        return StoryResponse(
+        response = StoryResponse(
             id=str(story.id),
             title=story.title,
             created_at=story.created_at,
@@ -157,6 +184,11 @@ async def get_story(story_id: str):
             error_message=story.error_message,
             cover_image_url=story.cover_image_url,
         )
+
+        # Cache the response (TTL: 5 minutes for individual stories)
+        cache_service.set(cache_key, response.model_dump(), ttl=300)
+
+        return response
     except HTTPException:
         raise
     except Exception as e:
@@ -252,6 +284,10 @@ async def delete_story(story_id: str):
 
         await story.delete()
         logger.info(f"Deleted story {story_id}")
+
+        # Invalidate cache for this story and lists
+        cache_service.delete(f"story:{story_id}")
+        cache_service.delete_pattern("stories:list:*")
 
         return None
     except HTTPException:

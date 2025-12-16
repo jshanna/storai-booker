@@ -353,6 +353,7 @@ For 100 stories/month: **~$65-95/month**
 - **[Development Plan](specs/development-plan.md)** - 6-phase roadmap
 - **[Quick Start](QUICK_START.md)** - 5-minute setup
 - **[Testing Guide](TESTING.md)** - Testing instructions
+- **[Performance Guide](PERFORMANCE.md)** - Performance optimizations and metrics
 - **[Backend README](backend/README.md)** - Backend-specific docs
 
 ## ⚙️ Configuration

@@ -3,7 +3,7 @@
  */
 
 import { Link } from 'react-router-dom';
-import { BookOpen, Trash2, MoreVertical, Eye } from 'lucide-react';
+import { BookOpen, Trash2, MoreVertical, Eye, Sparkles } from 'lucide-react';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -12,10 +12,13 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import { formatRelativeTime, formatPageCount, getStatusColor } from '@/lib/utils';
 import type { Story } from '@/types/api';
 import { Progress } from '@/components/ui/progress';
+import { GenerationArtifacts } from '@/components/reader/GenerationArtifacts';
+import { useState } from 'react';
 
 interface StoryCardProps {
   story: Story;
@@ -23,6 +26,7 @@ interface StoryCardProps {
 }
 
 export function StoryCard({ story, onDelete }: StoryCardProps) {
+  const [artifactsOpen, setArtifactsOpen] = useState(false);
   const isGenerating = story.status === 'generating';
   const hasError = story.status === 'error';
   const isComplete = story.status === 'complete';
@@ -74,12 +78,19 @@ export function StoryCard({ story, onDelete }: StoryCardProps) {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               {isComplete && (
-                <DropdownMenuItem asChild>
-                  <Link to={`/reader/${story.id}`}>
-                    <Eye className="mr-2 h-4 w-4" />
-                    Read Story
-                  </Link>
-                </DropdownMenuItem>
+                <>
+                  <DropdownMenuItem asChild>
+                    <Link to={`/reader/${story.id}`}>
+                      <Eye className="mr-2 h-4 w-4" />
+                      Read Story
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setArtifactsOpen(true)}>
+                    <Sparkles className="mr-2 h-4 w-4" />
+                    View Artifacts
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                </>
               )}
               <DropdownMenuItem
                 onClick={() => onDelete(story.id)}
@@ -145,6 +156,15 @@ export function StoryCard({ story, onDelete }: StoryCardProps) {
           </Button>
         )}
       </CardFooter>
+
+      {/* Generation Artifacts Dialog */}
+      {isComplete && (
+        <GenerationArtifacts
+          story={story}
+          open={artifactsOpen}
+          onOpenChange={setArtifactsOpen}
+        />
+      )}
     </Card>
   );
 }

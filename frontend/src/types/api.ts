@@ -26,7 +26,9 @@ export interface CharacterDescription {
 }
 
 export interface StoryMetadata {
+  title?: string | null;
   character_descriptions: CharacterDescription[];
+  character_sheet_urls: string[];
   character_relations?: string | null;
   story_outline?: string | null;
   page_outlines: string[];

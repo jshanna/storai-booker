@@ -141,13 +141,14 @@ export function BookReader({ story }: BookReaderProps) {
       )}
 
       {/* Page Display Area */}
-      <div className="flex-1 flex items-center justify-center p-4 md:p-8">
-        <div className="w-full max-w-4xl aspect-[3/4]">
+      <div className="flex-1 flex items-center justify-center p-2 sm:p-4 md:p-8">
+        <div className="w-full h-full max-w-6xl">
           {currentPage && (
             <BookPage
               page={currentPage}
               isFlipping={isFlipping}
               flipDirection={flipDirection}
+              isCover={currentPageIndex === 0 && !!story.cover_image_url}
             />
           )}
         </div>

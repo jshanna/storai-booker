@@ -15,7 +15,6 @@ from app.services.agents.coordinator import CoordinatorAgent
 from app.services.agents.page_generator import PageGeneratorAgent
 from app.services.agents.validator import ValidatorAgent
 from app.services.image.provider_factory import ImageProviderFactory
-from app.services.image.compositor import ImageCompositor
 from app.services.image.base import BaseImageProvider
 from app.services.storage import storage_service
 import httpx
@@ -210,7 +209,11 @@ This is a REFERENCE IMAGE for character consistency."""
                 character_sheets.append(character_sheet_bytes)
                 logger.info(f"Successfully generated character sheet for {character.name}")
             except Exception as e:
-                logger.error(f"Failed to generate character sheet for {character.name}: {e}")
+                error_msg = str(e).lower()
+                if "blocked" in error_msg or "safety" in error_msg or "prohibited" in error_msg:
+                    logger.warning(f"Character sheet for {character.name} blocked by safety filters, skipping")
+                else:
+                    logger.error(f"Failed to generate character sheet for {character.name}: {e}")
                 # Continue with other characters even if one fails
 
         if not character_sheets:
@@ -306,14 +309,31 @@ async def _generate_story_workflow(story_id: str, task) -> dict:
     image_provider = ImageProviderFactory.create_from_settings()
     coordinator = CoordinatorAgent(llm_provider)
 
-    metadata = await coordinator.plan_story(story.generation_inputs)
-    story.metadata = metadata
-    await story.save()
+    try:
+        metadata = await coordinator.plan_story(story.generation_inputs)
+        story.metadata = metadata
 
-    logger.info(
-        f"Story planning complete: {len(metadata.character_descriptions)} characters, "
-        f"{len(metadata.page_outlines)} page outlines"
-    )
+        # Update story title with generated title
+        if metadata.title:
+            story.title = metadata.title
+            logger.info(f"Updated story title to: {metadata.title}")
+
+        await story.save()
+
+        logger.info(
+            f"Story planning complete: {len(metadata.character_descriptions)} characters, "
+            f"{len(metadata.page_outlines)} page outlines"
+        )
+    except Exception as e:
+        error_msg = str(e).lower()
+        if "blocked" in error_msg or "safety" in error_msg or "prohibited" in error_msg:
+            logger.error(f"Story planning blocked by safety filters: {e}")
+            story.status = "error"
+            story.error_message = "Content blocked by safety filters during planning. Please try a different topic or setting."
+            await story.save()
+            raise ValueError("Content blocked by safety filters during story planning")
+        else:
+            raise
 
     # Step 1.5: Generate Character Sheets for consistency
     logger.info("Phase 1.5: Generating character reference sheets")
@@ -331,6 +351,32 @@ async def _generate_story_workflow(story_id: str, task) -> dict:
 
     if character_reference_bytes:
         logger.info(f"Generated {len(character_reference_bytes)} character reference sheets")
+
+        # Upload character sheets to storage
+        character_sheet_urls = []
+        for idx, sheet_bytes in enumerate(character_reference_bytes):
+            try:
+                character_name = metadata.character_descriptions[idx].name if idx < len(metadata.character_descriptions) else f"character_{idx}"
+                filename = f"character_sheet_{idx}_{character_name.replace(' ', '_')}.png"
+
+                object_key = await storage_service.upload_from_bytes(
+                    story_id=str(story.id),
+                    filename=filename,
+                    data=sheet_bytes,
+                    content_type="image/png",
+                )
+
+                presigned_url = await storage_service.get_signed_url(object_key, expiration=2592000)  # 30 days
+                character_sheet_urls.append(presigned_url)
+                logger.info(f"Uploaded character sheet {idx + 1}: {presigned_url}")
+            except Exception as e:
+                logger.error(f"Failed to upload character sheet {idx}: {e}")
+
+        # Save character sheet URLs to story metadata
+        if character_sheet_urls:
+            story.metadata.character_sheet_urls = character_sheet_urls
+            await story.save()
+            logger.info(f"Saved {len(character_sheet_urls)} character sheet URLs to story metadata")
     else:
         logger.warning("Failed to generate character sheets, continuing without references")
 
@@ -341,6 +387,12 @@ async def _generate_story_workflow(story_id: str, task) -> dict:
         meta={"phase": "page_generation", "progress": 0.3, "message": "Generating pages..."}
     )
 
+    # Clear any existing pages (in case of retry)
+    if story.pages:
+        logger.warning(f"Clearing {len(story.pages)} existing pages from previous attempt")
+        story.pages = []
+        await story.save()
+
     page_generator = PageGeneratorAgent(llm_provider)
 
     # Generate pages sequentially (parallel generation would require more complex coordination)
@@ -350,16 +402,27 @@ async def _generate_story_workflow(story_id: str, task) -> dict:
 
         logger.info(f"Generating page {page_number}/{story.generation_inputs.page_count}")
 
-        page = await page_generator.generate_page(
-            page_number=page_number,
-            page_outline=page_outline,
-            metadata=metadata,
-            inputs=story.generation_inputs,
-        )
+        try:
+            page = await page_generator.generate_page(
+                page_number=page_number,
+                page_outline=page_outline,
+                metadata=metadata,
+                inputs=story.generation_inputs,
+            )
 
-        # Add page to story
-        story.pages.append(page)
-        await story.save()
+            # Add page to story
+            story.pages.append(page)
+            await story.save()
+        except Exception as e:
+            error_msg = str(e).lower()
+            if "blocked" in error_msg or "safety" in error_msg or "prohibited" in error_msg:
+                logger.error(f"Page {page_number} generation blocked by safety filters: {e}")
+                story.status = "error"
+                story.error_message = f"Content blocked by safety filters on page {page_number}. Please try a different topic or adjust your story settings."
+                await story.save()
+                raise ValueError(f"Content blocked by safety filters during page {page_number} generation")
+            else:
+                raise
 
         # Generate and upload illustration for this page
         try:
@@ -383,7 +446,11 @@ async def _generate_story_workflow(story_id: str, task) -> dict:
                 logger.warning(f"Failed to generate illustration for page {page_number}, continuing without it")
 
         except Exception as e:
-            logger.error(f"Error generating illustration for page {page_number}: {e}")
+            error_msg = str(e).lower()
+            if "blocked" in error_msg or "safety" in error_msg or "prohibited" in error_msg:
+                logger.warning(f"Illustration for page {page_number} blocked by safety filters, continuing without image")
+            else:
+                logger.error(f"Error generating illustration for page {page_number}: {e}")
             # Continue without image (graceful degradation)
 
         # Update progress
@@ -407,7 +474,51 @@ async def _generate_story_workflow(story_id: str, task) -> dict:
     )
 
     validator = ValidatorAgent(llm_provider)
-    validation_output = await validator.validate_story(story)
+
+    try:
+        validation_output = await validator.validate_story(story)
+    except Exception as e:
+        # If validation fails due to content blocking, skip validation
+        if "blocked" in str(e).lower() or "safety" in str(e).lower():
+            logger.warning(f"Validation blocked by safety filters: {e}")
+            logger.warning("Skipping validation and marking story as complete")
+
+            # Mark story as complete without validation
+            story.status = "complete"
+            await story.save()
+
+            # Try to generate cover image
+            try:
+                logger.info("Generating cover image...")
+                cover_url = await _generate_cover_image(
+                    story=story,
+                    image_provider=image_provider,
+                    safety_settings=app_settings.safety_settings,
+                )
+
+                if cover_url:
+                    story.cover_image_url = cover_url
+                    await story.save()
+                    logger.info(f"Cover image URL saved: {cover_url}")
+            except Exception as cover_error:
+                logger.error(f"Error generating cover image: {cover_error}")
+
+            # Return success without validation
+            logger.info(f"Story generation complete for {story_id} (validation skipped)")
+            return {
+                "status": "success",
+                "story_id": story_id,
+                "title": story.title,
+                "pages": len(story.pages),
+                "validation": {
+                    "is_valid": None,
+                    "quality": "Validation skipped due to content filters",
+                    "issues": 0
+                }
+            }
+        else:
+            # Re-raise other errors
+            raise
 
     # Handle validation results
     if validation_output.is_valid:
@@ -435,7 +546,11 @@ async def _generate_story_workflow(story_id: str, task) -> dict:
                 logger.warning("Failed to generate cover image, continuing without it")
 
         except Exception as e:
-            logger.error(f"Error generating cover image: {e}")
+            error_msg = str(e).lower()
+            if "blocked" in error_msg or "safety" in error_msg or "prohibited" in error_msg:
+                logger.warning(f"Cover image blocked by safety filters, continuing without it")
+            else:
+                logger.error(f"Error generating cover image: {e}")
             # Continue without cover (graceful degradation)
 
     else:
@@ -551,7 +666,11 @@ async def _generate_story_workflow(story_id: str, task) -> dict:
                     logger.warning("Failed to generate cover image, continuing without it")
 
             except Exception as e:
-                logger.error(f"Error generating cover image: {e}")
+                error_msg = str(e).lower()
+                if "blocked" in error_msg or "safety" in error_msg or "prohibited" in error_msg:
+                    logger.warning(f"Cover image blocked by safety filters, continuing without it")
+                else:
+                    logger.error(f"Error generating cover image: {e}")
                 # Continue without cover (graceful degradation)
 
         else:
@@ -577,7 +696,11 @@ async def _generate_story_workflow(story_id: str, task) -> dict:
                     logger.warning("Failed to generate cover image, continuing without it")
 
             except Exception as e:
-                logger.error(f"Error generating cover image: {e}")
+                error_msg = str(e).lower()
+                if "blocked" in error_msg or "safety" in error_msg or "prohibited" in error_msg:
+                    logger.warning(f"Cover image blocked by safety filters, continuing without it")
+                else:
+                    logger.error(f"Error generating cover image: {e}")
                 # Continue without cover (graceful degradation)
 
     task.update_state(
@@ -878,25 +1001,16 @@ async def _generate_cover_image(
                 "bypass_safety_filters": safety_settings.bypass_safety_filters,
             })
 
-        # Generate base cover image (portrait aspect ratio)
+        # Generate cover image with title included (Gemini includes title in image)
         cover_bytes = await image_provider.generate_image(**gen_kwargs)
 
-        logger.info(f"Generated base cover image ({len(cover_bytes)} bytes)")
+        logger.info(f"Generated cover image ({len(cover_bytes)} bytes)")
 
-        # Composite title overlay
-        compositor = ImageCompositor(font_path=settings.cover_font_path)
-        final_cover = await compositor.create_cover_with_title(
-            image_bytes=cover_bytes,
-            title=story.title,
-        )
-
-        logger.info(f"Composited title overlay ({len(final_cover)} bytes)")
-
-        # Upload to storage
+        # Upload to storage (no text overlay needed - Gemini includes the title)
         object_key = await storage_service.upload_from_bytes(
             story_id=str(story.id),
             filename="cover.png",
-            data=final_cover,
+            data=cover_bytes,
             content_type="image/png",
         )
 
@@ -957,7 +1071,10 @@ Target Age: {inputs.audience_age} years old
 
 The cover should be eye-catching and magical, showing the main characters in the story's
 primary setting. The composition should be dramatic and inviting, drawing young readers in.
-Leave the bottom third of the image relatively clear and uncluttered for title text overlay.
+
+IMPORTANT: Include the book title "{story.title}" prominently on the cover in large,
+child-friendly lettering. The title should be clearly readable and integrated into the
+design as part of the illustration. Use colors that contrast well with the background.
 
 The overall mood should be {inputs.setting.split()[0] if inputs.setting else "magical"} and
 adventurous, perfectly capturing the essence of this children's {inputs.format}."""

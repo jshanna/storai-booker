@@ -167,6 +167,11 @@ Important:
 
             # Extract JSON
             if not response.candidates or len(response.candidates) == 0:
+                # Check if content was blocked by safety filters
+                if hasattr(response, 'prompt_feedback'):
+                    feedback = response.prompt_feedback
+                    logger.warning(f"Gemini blocked request. Prompt feedback: {feedback}")
+                    raise ValueError(f"Content blocked by Gemini safety filters: {feedback}")
                 raise ValueError("No candidates returned from Gemini API")
 
             candidate = response.candidates[0]

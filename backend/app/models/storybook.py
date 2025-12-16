@@ -9,7 +9,7 @@ from pymongo import IndexModel, DESCENDING
 class GenerationInputs(BaseModel):
     """User inputs for story generation."""
 
-    audience_age: int = Field(..., ge=3, le=18, description="Target audience age")
+    audience_age: int = Field(..., ge=0, le=100, description="Target audience age")
     audience_gender: Optional[str] = Field(None, description="Target audience gender")
     topic: str = Field(..., min_length=1, max_length=200, description="Story topic")
     setting: str = Field(..., min_length=1, max_length=200, description="Story setting")

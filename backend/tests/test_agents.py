@@ -75,6 +75,7 @@ class TestCoordinatorAgent:
         """Test successful story planning."""
         # Mock LLM response
         mock_planning_output = StoryPlanningOutput(
+            title="Hazel's Magical Adventure",
             character_descriptions=[
                 CharacterDescription(
                     name="Hazel",
@@ -107,6 +108,7 @@ class TestCoordinatorAgent:
         """Test that page count is adjusted if LLM returns wrong number."""
         # Mock LLM response with wrong page count
         mock_planning_output = StoryPlanningOutput(
+            title="Test Story",
             character_descriptions=[CharacterDescription(
                 name="Test", physical_description="Test", personality="Test", role="Test"
             )],
@@ -229,7 +231,7 @@ class TestValidatorAgent:
         return ValidatorAgent(mock_llm_provider)
 
     @pytest.fixture
-    def sample_storybook(self, sample_generation_inputs, sample_story_metadata):
+    def sample_storybook(self, init_test_db, sample_generation_inputs, sample_story_metadata):
         """Create sample storybook."""
         storybook = Storybook(
             title="Test Story",

@@ -116,15 +116,8 @@ export interface AppSettings {
 // ============================================================================
 
 export interface StoryCreateRequest {
-  audience_age: number;
-  audience_gender?: string | null;
-  topic: string;
-  setting: string;
-  format?: 'storybook' | 'comic';
-  illustration_style: string;
-  characters: string[];
-  page_count?: number;
-  panels_per_page?: number | null;
+  title: string;
+  generation_inputs: GenerationInputs;
 }
 
 export interface StoryCreateResponse {

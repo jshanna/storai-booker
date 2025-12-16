@@ -81,7 +81,23 @@ export function GenerationForm() {
   };
 
   const onSubmit = (data: StoryGenerationFormData) => {
-    createStory(data, {
+    // Transform form data to match backend API format
+    const requestData = {
+      title: data.topic.substring(0, 100), // Use topic as title, truncate to 100 chars
+      generation_inputs: {
+        audience_age: data.audience_age,
+        audience_gender: data.audience_gender,
+        topic: data.topic,
+        setting: data.setting,
+        format: data.format,
+        illustration_style: data.illustration_style,
+        characters: data.characters,
+        page_count: data.page_count,
+        panels_per_page: data.panels_per_page,
+      },
+    };
+
+    createStory(requestData, {
       onSuccess: () => {
         // Navigate to library after successful creation
         navigate('/library');

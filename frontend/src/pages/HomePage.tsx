@@ -15,18 +15,18 @@ export function HomePage() {
         <h1 className="text-4xl font-bold tracking-tight sm:text-5xl md:text-6xl">
           Welcome to StorAI Booker
         </h1>
-        <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+        <p className="text-base sm:text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto px-4">
           Create magical children's storybooks and comic books powered by AI.
           Generate custom illustrated stories in minutes.
         </p>
-        <div className="flex gap-4 justify-center pt-4">
-          <Button asChild size="lg">
+        <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
+          <Button asChild size="lg" className="w-full sm:w-auto">
             <Link to="/generate">
               <Sparkles className="mr-2 h-5 w-5" />
               Create Story
             </Link>
           </Button>
-          <Button asChild variant="outline" size="lg">
+          <Button asChild variant="outline" size="lg" className="w-full sm:w-auto">
             <Link to="/library">
               <Library className="mr-2 h-5 w-5" />
               View Library

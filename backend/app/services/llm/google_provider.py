@@ -1,16 +1,18 @@
 """Google Gemini LLM provider implementation."""
 import json
+import re
+import asyncio
 from typing import Type, Optional, Any
 from pydantic import BaseModel, ValidationError
-from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain.schema import HumanMessage, SystemMessage
+from google import genai
+from google.genai.types import GenerateContentConfig
 from loguru import logger
 
 from app.services.llm.base import BaseLLMProvider
 
 
 class GoogleGeminiProvider(BaseLLMProvider):
-    """Google Gemini LLM provider using LangChain."""
+    """Google Gemini LLM provider using native google-genai SDK."""
 
     def __init__(
         self,
@@ -31,21 +33,15 @@ class GoogleGeminiProvider(BaseLLMProvider):
         super().__init__(api_key, model, temperature)
         self.max_retries = max_retries
 
-    def get_client(self) -> ChatGoogleGenerativeAI:
+    def get_client(self) -> genai.Client:
         """
         Get or create the Gemini client.
 
         Returns:
-            ChatGoogleGenerativeAI instance
+            genai.Client instance
         """
         if not self._client:
-            self._client = ChatGoogleGenerativeAI(
-                model=self.model,
-                google_api_key=self.api_key,
-                temperature=self.temperature,
-                max_retries=self.max_retries,
-                convert_system_message_to_human=True,  # Gemini compatibility
-            )
+            self._client = genai.Client(api_key=self.api_key)
             logger.info(f"Initialized Gemini provider with model: {self.model}")
 
         return self._client
@@ -73,19 +69,32 @@ class GoogleGeminiProvider(BaseLLMProvider):
         try:
             client = self.get_client()
 
-            # Build message
-            message = HumanMessage(content=prompt)
-
-            # Note: max_tokens is handled by the client configuration
-            # ChatGoogleGenerativeAI doesn't accept max_output_tokens in ainvoke()
-            # If you need to control output length, set it during client init
+            # Build generation config
+            config = GenerateContentConfig(
+                temperature=self.temperature,
+                max_output_tokens=max_tokens if max_tokens else 8192,
+            )
 
             # Generate
             logger.debug(f"Generating text with Gemini ({self.model})")
-            response = await client.ainvoke([message])
+
+            # Use asyncio.to_thread since the SDK is sync
+            response = await asyncio.to_thread(
+                client.models.generate_content,
+                model=self.model,
+                contents=prompt,
+                config=config,
+            )
 
             # Extract text content
-            text = response.content
+            if not response.candidates or len(response.candidates) == 0:
+                raise ValueError("No candidates returned from Gemini API")
+
+            candidate = response.candidates[0]
+            if not candidate.content or not candidate.content.parts:
+                raise ValueError("No content in response from Gemini API")
+
+            text = candidate.content.parts[0].text
 
             logger.debug(f"Generated {len(text)} characters")
             return text
@@ -125,16 +134,9 @@ class GoogleGeminiProvider(BaseLLMProvider):
             # Get JSON schema from Pydantic model
             schema = response_model.model_json_schema()
 
-            # Build system message with schema instructions
-            system_msg = (
-                "You are a helpful assistant that generates valid JSON responses. "
-                "Your output must be valid JSON that matches the provided schema exactly. "
-                "Do not include any explanatory text, only output the JSON object."
-            )
-
-            # Build human message with prompt and schema
+            # Build enhanced prompt with schema instructions
             schema_str = json.dumps(schema, indent=2)
-            human_msg = f"""{prompt}
+            enhanced_prompt = f"""{prompt}
 
 Please generate a JSON response matching this exact schema:
 
@@ -144,17 +146,34 @@ Important:
 - Output only valid JSON, no additional text
 - All required fields must be present
 - Use appropriate data types as specified in the schema
-- Be creative and detailed in your responses"""
+- Be creative and detailed in your responses
+- Do not wrap the JSON in markdown code blocks"""
+
+            # Build generation config
+            config = GenerateContentConfig(
+                temperature=self.temperature,
+                max_output_tokens=8192,
+            )
 
             # Generate
             logger.debug(f"Generating structured output for {response_model.__name__}")
-            response = await client.ainvoke([
-                SystemMessage(content=system_msg),
-                HumanMessage(content=human_msg)
-            ])
 
-            # Extract and clean JSON
-            json_text = response.content.strip()
+            response = await asyncio.to_thread(
+                client.models.generate_content,
+                model=self.model,
+                contents=enhanced_prompt,
+                config=config,
+            )
+
+            # Extract JSON
+            if not response.candidates or len(response.candidates) == 0:
+                raise ValueError("No candidates returned from Gemini API")
+
+            candidate = response.candidates[0]
+            if not candidate.content or not candidate.content.parts:
+                raise ValueError("No content in response from Gemini API")
+
+            json_text = candidate.content.parts[0].text.strip()
 
             # Remove markdown code blocks if present
             if json_text.startswith("```json"):
@@ -165,6 +184,20 @@ Important:
                 json_text = json_text[:-3]  # Remove trailing ```
 
             json_text = json_text.strip()
+
+            # Sanitize control characters in JSON strings
+            def sanitize_json_string(match):
+                s = match.group(0)
+                # Replace literal newlines, tabs, and carriage returns with escaped versions
+                s = s.replace('\n', '\\n')
+                s = s.replace('\r', '\\r')
+                s = s.replace('\t', '\\t')
+                # Remove other control characters (0x00-0x1F except those we just escaped)
+                s = re.sub(r'[\x00-\x08\x0B\x0C\x0E-\x1F]', '', s)
+                return s
+
+            # Apply sanitization to string values in JSON
+            json_text = re.sub(r'"([^"\\]*(\\.[^"\\]*)*)"', sanitize_json_string, json_text)
 
             # Parse JSON
             try:
@@ -210,17 +243,12 @@ Important:
             Gemini converts system messages to human messages internally
         """
         try:
-            client = self.get_client()
+            # Combine system and user messages
+            combined_prompt = f"""System Instructions: {system_message}
 
-            messages = [
-                SystemMessage(content=system_message),
-                HumanMessage(content=user_message)
-            ]
+User Request: {user_message}"""
 
-            logger.debug(f"Generating with system message using {self.model}")
-            response = await client.ainvoke(messages, **kwargs)
-
-            return response.content
+            return await self.generate_text(combined_prompt, **kwargs)
 
         except Exception as e:
             logger.error(f"Gemini generation with system message failed: {e}")

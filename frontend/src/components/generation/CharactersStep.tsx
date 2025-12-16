@@ -6,7 +6,6 @@ import { UseFormReturn, useFieldArray } from 'react-hook-form';
 import { Plus, Trash2 } from 'lucide-react';
 import {
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -85,9 +84,9 @@ export function CharactersStep({ form }: CharactersStepProps) {
         Add Character
       </Button>
 
-      <FormDescription>
+      <p className="text-sm text-muted-foreground">
         You have {fields.length} of 10 characters
-      </FormDescription>
+      </p>
     </div>
   );
 }

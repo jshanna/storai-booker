@@ -1,6 +1,6 @@
 """Story generation Celery tasks."""
 import asyncio
-from typing import Optional
+from typing import Optional, List
 from celery import group, chord
 from loguru import logger
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -8,7 +8,8 @@ from beanie import init_beanie
 
 from app.services.celery_app import celery_app
 from app.core.config import settings
-from app.models.storybook import Storybook, Page
+from app.models.storybook import Storybook, Page, StoryMetadata
+from app.models.settings import AppSettings
 from app.services.llm.provider_factory import LLMProviderFactory
 from app.services.agents.coordinator import CoordinatorAgent
 from app.services.agents.page_generator import PageGeneratorAgent
@@ -17,6 +18,7 @@ from app.services.image.provider_factory import ImageProviderFactory
 from app.services.image.compositor import ImageCompositor
 from app.services.image.base import BaseImageProvider
 from app.services.storage import storage_service
+import httpx
 
 
 # MongoDB connection management for Celery workers
@@ -36,10 +38,27 @@ async def get_mongodb_client() -> AsyncIOMotorClient:
         # Initialize Beanie
         await init_beanie(
             database=_mongodb_client[settings.mongodb_db_name],
-            document_models=[Storybook],
+            document_models=[Storybook, AppSettings],
         )
         logger.info("MongoDB connection initialized in Celery worker")
     return _mongodb_client
+
+
+async def get_app_settings() -> AppSettings:
+    """
+    Get application settings from database.
+
+    Returns:
+        AppSettings instance
+
+    Raises:
+        ValueError: If settings not found
+    """
+    await get_mongodb_client()
+    app_settings = await AppSettings.find_one({"user_id": "default"})
+    if not app_settings:
+        raise ValueError("Application settings not found in database")
+    return app_settings
 
 
 def run_async(coro):
@@ -81,6 +100,129 @@ async def _update_story_status(
             story.error_message = error_message
         await story.save()
         logger.info(f"Story {story_id} status updated to: {status}")
+
+
+async def _download_image_from_url(url: str) -> Optional[bytes]:
+    """
+    Download image bytes from a URL.
+
+    Args:
+        url: URL to download from (e.g., signed S3 URL)
+
+    Returns:
+        Image bytes or None if download fails
+    """
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(url, timeout=30.0)
+            response.raise_for_status()
+            return response.content
+    except Exception as e:
+        logger.error(f"Failed to download image from {url}: {e}")
+        return None
+
+
+async def _generate_character_sheets(
+    story: Storybook,
+    metadata: StoryMetadata,
+    image_provider: BaseImageProvider,
+    safety_settings=None,
+    max_characters: int = 3,
+) -> Optional[List[bytes]]:
+    """
+    Generate character reference sheets for main characters.
+
+    Creates clean character portrait images with neutral backgrounds
+    to use as references for consistent character appearance across all pages.
+
+    Args:
+        story: Storybook instance
+        metadata: Story metadata with character descriptions
+        image_provider: Image generation provider
+        safety_settings: Safety settings for image generation
+        max_characters: Maximum number of character sheets to generate
+
+    Returns:
+        List of character sheet images as bytes, or None if generation fails
+    """
+    try:
+        # Get main characters (protagonists first, then supporting)
+        main_characters = [
+            c for c in metadata.character_descriptions
+            if c.role.lower() in ["protagonist", "main character"]
+        ]
+
+        # Add supporting characters if we don't have enough mains
+        if len(main_characters) < max_characters:
+            supporting = [
+                c for c in metadata.character_descriptions
+                if c.role.lower() not in ["protagonist", "main character"]
+            ]
+            main_characters.extend(supporting[:max_characters - len(main_characters)])
+
+        main_characters = main_characters[:max_characters]
+
+        if not main_characters:
+            logger.warning("No characters found for character sheet generation")
+            return None
+
+        logger.info(f"Generating {len(main_characters)} character reference sheets")
+        character_sheets = []
+
+        for idx, character in enumerate(main_characters):
+            logger.info(f"Generating character sheet {idx + 1}/{len(main_characters)}: {character.name}")
+
+            prompt = f"""Create a character reference sheet for a children's storybook.
+
+Character Name: {character.name}
+Physical Description: {character.physical_description}
+Personality: {character.personality}
+Role: {character.role}
+
+Illustration Style: {metadata.illustration_style_guide}
+Target Age: {story.generation_inputs.audience_age} years old
+
+IMPORTANT: Create a clean character portrait showing the character:
+- Centered in the frame
+- Facing forward in a neutral, standing pose
+- Full body visible (head to toe)
+- Plain white or very subtle background
+- No text, labels, or annotations
+- Focus on distinctive features, clothing, colors, and appearance details
+- Clear, well-lit, easy to see all character details
+
+This is a REFERENCE IMAGE for character consistency."""
+
+            gen_kwargs = {
+                "prompt": prompt,
+                "aspect_ratio": "3:4",  # Portrait for character sheets
+            }
+
+            if safety_settings:
+                gen_kwargs.update({
+                    "safety_threshold": safety_settings.safety_threshold,
+                    "allow_adult_imagery": safety_settings.allow_adult_imagery,
+                    "bypass_safety_filters": safety_settings.bypass_safety_filters,
+                })
+
+            try:
+                character_sheet_bytes = await image_provider.generate_image(**gen_kwargs)
+                character_sheets.append(character_sheet_bytes)
+                logger.info(f"Successfully generated character sheet for {character.name}")
+            except Exception as e:
+                logger.error(f"Failed to generate character sheet for {character.name}: {e}")
+                # Continue with other characters even if one fails
+
+        if not character_sheets:
+            logger.error("Failed to generate any character sheets")
+            return None
+
+        logger.info(f"Successfully generated {len(character_sheets)} character sheets")
+        return character_sheets
+
+    except Exception as e:
+        logger.error(f"Error in character sheet generation: {e}")
+        return None
 
 
 @celery_app.task(name="generate_story", bind=True, max_retries=3)
@@ -149,6 +291,10 @@ async def _generate_story_workflow(story_id: str, task) -> dict:
     story.status = "generating"
     await story.save()
 
+    # Get app settings from database
+    app_settings = await get_app_settings()
+    logger.info(f"Using API provider: {app_settings.primary_llm_provider.name}")
+
     # Step 1: Story Planning (Coordinator Agent)
     logger.info(f"Phase 1: Story planning for '{story.title}'")
     task.update_state(
@@ -168,6 +314,25 @@ async def _generate_story_workflow(story_id: str, task) -> dict:
         f"Story planning complete: {len(metadata.character_descriptions)} characters, "
         f"{len(metadata.page_outlines)} page outlines"
     )
+
+    # Step 1.5: Generate Character Sheets for consistency
+    logger.info("Phase 1.5: Generating character reference sheets")
+    task.update_state(
+        state="PROGRESS",
+        meta={"phase": "character_sheets", "progress": 0.2, "message": "Creating character reference sheets..."}
+    )
+
+    character_reference_bytes = await _generate_character_sheets(
+        story=story,
+        metadata=metadata,
+        image_provider=image_provider,
+        safety_settings=app_settings.safety_settings,
+    )
+
+    if character_reference_bytes:
+        logger.info(f"Generated {len(character_reference_bytes)} character reference sheets")
+    else:
+        logger.warning("Failed to generate character sheets, continuing without references")
 
     # Step 2: Page Generation (Page Agents in parallel)
     logger.info(f"Phase 2: Generating {story.generation_inputs.page_count} pages")
@@ -203,6 +368,8 @@ async def _generate_story_workflow(story_id: str, task) -> dict:
                 page=page,
                 story_id=str(story.id),
                 image_provider=image_provider,
+                safety_settings=app_settings.safety_settings,
+                character_reference=character_reference_bytes,
                 max_retries=settings.image_max_retries,
             )
 
@@ -257,6 +424,7 @@ async def _generate_story_workflow(story_id: str, task) -> dict:
             cover_url = await _generate_cover_image(
                 story=story,
                 image_provider=image_provider,
+                safety_settings=app_settings.safety_settings,
             )
 
             if cover_url:
@@ -281,9 +449,21 @@ async def _generate_story_workflow(story_id: str, task) -> dict:
 
         if pages_to_regenerate:
             logger.info(f"Regenerating {len(pages_to_regenerate)} pages")
+            total_regen = len(pages_to_regenerate)
 
             # Regenerate problematic pages
-            for page_number, issue_description in pages_to_regenerate:
+            for regen_index, (page_number, issue_description) in enumerate(pages_to_regenerate):
+                # Update progress for regeneration
+                regen_progress = 0.85 + (0.1 * ((regen_index + 1) / total_regen))
+                task.update_state(
+                    state="PROGRESS",
+                    meta={
+                        "phase": "regeneration",
+                        "progress": regen_progress,
+                        "message": f"Regenerating page {page_number} ({regen_index + 1}/{total_regen})"
+                    }
+                )
+
                 # Find the page
                 page_index = page_number - 1
                 if page_index < len(story.pages):
@@ -298,6 +478,7 @@ async def _generate_story_workflow(story_id: str, task) -> dict:
                         continue
 
                     # Regenerate page
+                    logger.info(f"Regenerating page {page_number} due to: {issue_description}")
                     new_page = await page_generator.regenerate_page(
                         page=old_page,
                         issue_description=issue_description,
@@ -305,11 +486,40 @@ async def _generate_story_workflow(story_id: str, task) -> dict:
                         inputs=story.generation_inputs,
                     )
 
-                    # Replace page
-                    story.pages[page_index] = new_page
-                    await story.save()
+                    # Generate illustration for regenerated page
+                    try:
+                        logger.info(f"Generating illustration for regenerated page {page_number}")
+                        illustration_url = await _generate_page_illustration(
+                            page=new_page,
+                            story_id=str(story.id),
+                            image_provider=image_provider,
+                            safety_settings=app_settings.safety_settings,
+                            character_reference=character_reference_bytes,
+                            max_retries=settings.image_max_retries,
+                        )
+
+                        if illustration_url:
+                            new_page.illustration_url = illustration_url
+                            story.pages[page_index] = new_page
+                            await story.save()
+                            logger.info(f"Illustration saved for regenerated page {page_number}")
+                        else:
+                            logger.error(f"Failed to generate illustration for regenerated page {page_number}")
+                            # Replace page even without illustration
+                            story.pages[page_index] = new_page
+                            await story.save()
+
+                    except Exception as e:
+                        logger.error(f"Failed to generate illustration for regenerated page {page_number}: {e}")
+                        # Replace page even without illustration
+                        story.pages[page_index] = new_page
+                        await story.save()
 
             # Re-validate after regeneration
+            task.update_state(
+                state="PROGRESS",
+                meta={"phase": "revalidation", "progress": 0.95, "message": "Re-validating story..."}
+            )
             validation_output = await validator.validate_story(story)
 
             if validation_output.is_valid:
@@ -330,6 +540,7 @@ async def _generate_story_workflow(story_id: str, task) -> dict:
                 cover_url = await _generate_cover_image(
                     story=story,
                     image_provider=image_provider,
+                    safety_settings=app_settings.safety_settings,
                 )
 
                 if cover_url:
@@ -355,6 +566,7 @@ async def _generate_story_workflow(story_id: str, task) -> dict:
                 cover_url = await _generate_cover_image(
                     story=story,
                     image_provider=image_provider,
+                    safety_settings=app_settings.safety_settings,
                 )
 
                 if cover_url:
@@ -535,6 +747,8 @@ async def _generate_page_illustration(
     page: Page,
     story_id: str,
     image_provider: BaseImageProvider,
+    safety_settings=None,
+    character_reference: Optional[List[bytes]] = None,
     max_retries: int = 3,
 ) -> Optional[str]:
     """
@@ -544,6 +758,8 @@ async def _generate_page_illustration(
         page: Page with illustration_prompt
         story_id: Story ID for storage path
         image_provider: Image generation provider
+        safety_settings: Safety settings for image generation
+        character_reference: List of character sheet images for consistency
         max_retries: Maximum number of retry attempts
 
     Returns:
@@ -559,11 +775,27 @@ async def _generate_page_illustration(
                 f"(attempt {attempt + 1}/{max_retries})"
             )
 
+            # Build generation kwargs
+            gen_kwargs = {
+                "prompt": page.illustration_prompt,
+                "aspect_ratio": settings.image_aspect_ratio,
+            }
+
+            # Add character reference sheets if provided
+            if character_reference:
+                gen_kwargs["reference_images"] = character_reference
+                logger.debug(f"Using {len(character_reference)} character reference sheets for consistency")
+
+            # Add safety settings if provided
+            if safety_settings:
+                gen_kwargs.update({
+                    "safety_threshold": safety_settings.safety_threshold,
+                    "allow_adult_imagery": safety_settings.allow_adult_imagery,
+                    "bypass_safety_filters": safety_settings.bypass_safety_filters,
+                })
+
             # Generate image from prompt
-            illustration_bytes = await image_provider.generate_image(
-                prompt=page.illustration_prompt,
-                aspect_ratio=settings.image_aspect_ratio,
-            )
+            illustration_bytes = await image_provider.generate_image(**gen_kwargs)
 
             logger.info(
                 f"Generated illustration for page {page.page_number} "
@@ -613,6 +845,7 @@ async def _generate_page_illustration(
 async def _generate_cover_image(
     story: Storybook,
     image_provider: BaseImageProvider,
+    safety_settings=None,
 ) -> Optional[str]:
     """
     Generate cover image with title overlay.
@@ -620,6 +853,7 @@ async def _generate_cover_image(
     Args:
         story: Complete storybook with metadata
         image_provider: Image generation provider
+        safety_settings: Safety settings for image generation
 
     Returns:
         Signed URL to the uploaded cover image, or None if generation fails
@@ -630,11 +864,22 @@ async def _generate_cover_image(
         # Build cover prompt from story metadata
         cover_prompt = _build_cover_prompt(story)
 
+        # Build generation kwargs
+        gen_kwargs = {
+            "prompt": cover_prompt,
+            "aspect_ratio": settings.cover_aspect_ratio,
+        }
+
+        # Add safety settings if provided
+        if safety_settings:
+            gen_kwargs.update({
+                "safety_threshold": safety_settings.safety_threshold,
+                "allow_adult_imagery": safety_settings.allow_adult_imagery,
+                "bypass_safety_filters": safety_settings.bypass_safety_filters,
+            })
+
         # Generate base cover image (portrait aspect ratio)
-        cover_bytes = await image_provider.generate_image(
-            prompt=cover_prompt,
-            aspect_ratio=settings.cover_aspect_ratio,
-        )
+        cover_bytes = await image_provider.generate_image(**gen_kwargs)
 
         logger.info(f"Generated base cover image ({len(cover_bytes)} bytes)")
 

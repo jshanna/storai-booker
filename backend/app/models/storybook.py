@@ -32,6 +32,7 @@ class CharacterDescription(BaseModel):
 class StoryMetadata(BaseModel):
     """Story generation metadata."""
 
+    title: Optional[str] = None
     character_descriptions: List[CharacterDescription] = Field(default_factory=list)
     character_relations: Optional[str] = None
     story_outline: Optional[str] = None

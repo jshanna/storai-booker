@@ -127,6 +127,51 @@ class LLMProviderFactory:
         )
 
     @classmethod
+    def create_from_db_settings(
+        cls,
+        db_settings,  # AppSettings from database
+        use_fallback: bool = False,
+        temperature: float = 0.7,
+    ) -> BaseLLMProvider:
+        """
+        Create provider from database settings (AppSettings model).
+
+        Args:
+            db_settings: AppSettings instance from database
+            use_fallback: If True, use fallback provider instead of primary
+            temperature: Sampling temperature
+
+        Returns:
+            Configured LLM provider instance
+
+        Raises:
+            ValueError: If provider is not configured
+        """
+        # Get the appropriate provider config
+        provider_config = db_settings.fallback_llm_provider if use_fallback else db_settings.primary_llm_provider
+
+        if not provider_config:
+            raise ValueError("No LLM provider configured in database settings")
+
+        provider_name = provider_config.name
+        api_key = provider_config.api_key
+        model = provider_config.text_model
+
+        if not api_key:
+            raise ValueError(f"No API key configured for {provider_name} in database settings")
+
+        logger.info(f"Creating {provider_name} provider from database settings: {model}")
+
+        if provider_name == "google":
+            return cls.create_google_gemini(api_key=api_key, model=model, temperature=temperature)
+        elif provider_name == "openai":
+            raise ValueError("OpenAI provider not yet implemented")
+        elif provider_name == "anthropic":
+            raise ValueError("Anthropic provider not yet implemented")
+        else:
+            raise ValueError(f"Unsupported provider: {provider_name}")
+
+    @classmethod
     def create_google_gemini(
         cls,
         api_key: Optional[str] = None,

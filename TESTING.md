@@ -4,19 +4,22 @@ Guide for testing the StorAI-Booker application.
 
 ## Testing Strategy
 
-### Current Test Coverage (Phase 4)
+### Current Test Coverage (Phase 5.1 Complete)
 
 **Backend:**
-- ✅ API endpoint integration tests (pytest)
+- ✅ API endpoint integration tests (pytest) - 14 tests
+- ✅ Storage service unit tests - 10 tests
+- ✅ Agent unit tests - 10 tests
+- ✅ Prompt template tests - 10 tests
 - ✅ Database operations tests
 - ✅ Error handling tests
-- ⏳ Unit tests for agents (Phase 5)
-- ⏳ E2E workflow tests (Phase 5)
+- ✅ **Overall: 44 passing tests, 49% coverage**
+- ⏳ E2E workflow tests (deferred to Phase 5.3)
 
 **Frontend:**
 - ✅ Manual testing through UI
-- ⏳ Component tests (Phase 5)
-- ⏳ E2E tests with Playwright (Phase 5)
+- ⏳ Component tests (Phase 5.3)
+- ⏳ E2E tests with Playwright (Phase 5.3)
 
 ## Quick Test Checklist
 
@@ -168,17 +171,48 @@ pytest --cov=app
 # Coverage report
 pytest --cov=app --cov-report=html
 open htmlcov/index.html
+
+# Quick summary
+pytest -q
 ```
 
 ### Test Organization
 
 ```
 backend/tests/
-├── conftest.py              # Pytest fixtures
-├── test_api_stories.py      # Story CRUD endpoints
-├── test_api_settings.py     # Settings endpoints
-└── test_models.py           # Model validation
+├── conftest.py              # Pytest fixtures & test database setup
+├── test_api_stories.py      # Story CRUD endpoints (14 tests)
+├── test_api_settings.py     # Settings endpoints (4 tests)
+├── test_agents.py           # Agent unit tests (10 tests)
+├── test_storage.py          # Storage service tests (10 tests)
+├── test_prompts.py          # Prompt template tests (10 tests)
+├── test_llm_providers.py    # LLM provider tests (12 tests, skipped)
+└── test_story_generation.py # Workflow tests (7 tests, skipped)
 ```
+
+### Coverage Summary (Phase 5.1)
+
+**Excellent Coverage (80%+):**
+- ✅ Models: 100%
+- ✅ Schemas: 100%
+- ✅ Story Planning Prompts: 100%
+- ✅ Page Generation Prompts: 100%
+- ✅ Validation Prompts: 97%
+- ✅ Config: 96%
+- ✅ Celery App: 92%
+- ✅ Middleware: 88%
+- ✅ Coordinator Agent: 88%
+- ✅ Validator Agent: 87%
+- ✅ Page Generator Agent: 82%
+- ✅ Settings API: 81%
+- ✅ Storage Service: 80%
+
+**Integration Testing (Deferred to E2E):**
+- ⏳ Story Generation Task: 9% (complex Celery workflows)
+- ⏳ Google LLM Provider: 16% (SDK integration)
+- ⏳ Image Services: 15-47% (Google Imagen integration)
+- ⏳ Provider Factories: 30-35% (settings dependencies)
+- ⏳ Stories API: 67% (async workflow endpoints)
 
 ## API Testing
 

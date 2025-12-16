@@ -77,17 +77,12 @@ The API will be available at http://localhost:8000
 poetry run pytest
 ```
 
-### Phase 2 E2E Test (LLM Agents)
-```bash
-poetry run python test_phase2_e2e.py
-```
+Current test coverage includes:
+- API endpoint integration tests
+- Database operation tests
+- Error handling tests
 
-### Phase 3 E2E Test (Image Generation)
-```bash
-poetry run python test_phase3_e2e.py
-```
-
-Note: E2E tests require a valid Google API key and will make real API calls.
+Note: For comprehensive testing, use the main test suite. E2E testing is done via manual testing through the frontend.
 
 ## API Documentation
 
@@ -129,15 +124,15 @@ backend/
 │   ├── core/             # Configuration and settings
 │   ├── models/           # Beanie/Pydantic models
 │   ├── services/
-│   │   ├── agents/       # LLM agents (Phase 2)
-│   │   ├── image/        # Image generation (Phase 3)
-│   │   ├── llm/          # LLM providers
+│   │   ├── agents/       # LLM agents (coordinator, page generator, validator)
+│   │   ├── image/        # Image generation & composition
+│   │   ├── llm/          # LLM providers & prompts
 │   │   ├── celery_app.py
 │   │   └── storage.py    # MinIO/S3 client
-│   └── tasks/            # Celery background tasks
-├── tests/                # Unit and integration tests
-├── test_phase2_e2e.py   # Phase 2 E2E test
-├── test_phase3_e2e.py   # Phase 3 E2E test
+│   ├── tasks/            # Celery background tasks
+│   └── middleware/       # Error handlers
+├── tests/                # Pytest test suite
+├── main.py               # FastAPI entry point
 ├── pyproject.toml        # Python dependencies
 └── README.md
 ```
@@ -214,10 +209,9 @@ MinIO/S3 (images)
 
 ## Next Steps
 
-- **Phase 4**: Frontend development (React/Next.js)
-- **Phase 5**: User authentication and multi-user support
-- **Phase 6**: Export to PDF/EPUB formats
+- **Phase 5**: Production readiness (performance, testing, security)
+- **Phase 6**: Advanced features (user accounts, PDF export, sharing)
 
 ## License
 
-Proprietary - StorAI Team
+Proprietary - Portfolio Project

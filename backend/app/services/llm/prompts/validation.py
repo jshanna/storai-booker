@@ -39,6 +39,9 @@ def build_validation_prompt(storybook: Storybook) -> str:
     # Build character descriptions
     character_info = _format_character_descriptions(storybook.metadata.character_descriptions)
 
+    # Get age-specific content restrictions
+    age_restrictions = _get_age_content_restrictions(storybook.generation_inputs.audience_age)
+
     prompt = f"""You are a children's story editor reviewing a completed storybook for quality and consistency.
 
 **Story Information:**
@@ -68,11 +71,16 @@ Validate this story for:
    - Is there a clear beginning, middle, and end?
    - Are there any plot holes or confusing transitions?
 
-3. **Age Appropriateness**:
+3. **Age Appropriateness** (CRITICAL - Must be strictly enforced):
    - Is the language suitable for {storybook.generation_inputs.audience_age}-year-olds?
    - Are the themes and content appropriate?
    - Is the vocabulary at the right level?
    - Is the story length appropriate?
+
+   **Age-Specific Content Restrictions for {storybook.generation_inputs.audience_age}-year-olds:**
+{age_restrictions}
+
+   **IMPORTANT**: Flag ANY content that violates these age restrictions as a CRITICAL issue requiring regeneration.
 
 4. **Story Coherence**:
    - Does the story make sense as a whole?
@@ -120,3 +128,89 @@ def _format_character_descriptions(character_descriptions) -> str:
             f"{char.personality}"
         )
     return "\n".join(lines)
+
+
+def _get_age_content_restrictions(age: int) -> str:
+    """
+    Get age-specific content restrictions for validation.
+
+    Args:
+        age: Target audience age
+
+    Returns:
+        Formatted string of content restrictions
+    """
+    if age <= 4:
+        return """   - NO scary, sad, or tense situations whatsoever
+   - NO mention of death, injury, or danger
+   - NO conflict beyond simple misunderstandings
+   - NO complex emotions (fear, anger, sadness)
+   - ONLY positive, happy, safe scenarios
+   - Simple, repetitive language only"""
+
+    elif age <= 6:
+        return """   - NO scary content or real danger
+   - NO violence or aggressive behavior
+   - NO sad endings or unresolved sadness
+   - NO complex fears or anxieties
+   - Very mild conflicts only (lost toy, sharing problems)
+   - Simple problem-solving with happy resolutions
+   - Gentle emotions only (happy, excited, a little worried)"""
+
+    elif age <= 8:
+        return """   - NO frightening or threatening situations
+   - NO violence or fighting (even fantasy)
+   - NO death or serious injury
+   - NO scary creatures or villains
+   - Mild conflicts only (disagreements, small challenges)
+   - Age-appropriate emotions (curiosity, mild concern, happiness)
+   - Positive, encouraging messages only"""
+
+    elif age <= 10:
+        return """   - NO graphic violence or detailed descriptions of harm
+   - NO scary horror elements (ghosts, monsters as threats)
+   - NO death of main characters
+   - NO intense emotional trauma
+   - Light adventure and mild suspense acceptable
+   - Conflicts should be age-appropriate (bullying, competition)
+   - Themes of courage, friendship, responsibility"""
+
+    elif age <= 12:
+        return """   - NO explicit violence or gore
+   - NO horror or intense scary content
+   - NO graphic descriptions of death or injury
+   - NO mature romantic content
+   - Fantasy violence (action scenes) acceptable if not graphic
+   - Emotional depth acceptable (sadness, fear, conflict)
+   - Themes of identity, independence, friendship challenges"""
+
+    elif age <= 14:
+        return """   - NO graphic violence or explicit gore
+   - NO sexual content or mature romance
+   - NO glorification of dangerous behaviors
+   - NO explicit drug/alcohol references
+   - Can explore difficult emotions (grief, anxiety, anger)
+   - Can address social issues (peer pressure, identity)
+   - Action and fantasy violence acceptable if story-appropriate
+   - Moral complexity acceptable"""
+
+    elif age <= 16:
+        return """   - NO explicit sexual content
+   - NO graphic violence for shock value
+   - NO promotion of self-harm or dangerous behaviors
+   - Can include mature themes (relationships, loss, identity)
+   - Can explore difficult topics with sensitivity (mental health, discrimination)
+   - Realistic portrayal of teen challenges acceptable
+   - Complex moral questions acceptable
+   - Keep violence/romance age-appropriate"""
+
+    else:  # 17-18
+        return """   - NO pornographic or explicit sexual content
+   - NO gratuitous graphic violence
+   - NO promotion of illegal activities or self-harm
+   - Mature themes acceptable if handled thoughtfully
+   - Can explore complex social/political issues
+   - Realistic portrayal of young adult experiences
+   - Romance acceptable if respectful and appropriate
+   - Violence acceptable if story-relevant, not glorified
+   - Note: Still young adult content, not adult content"""

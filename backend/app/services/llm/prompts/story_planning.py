@@ -133,7 +133,7 @@ def _get_age_guidelines(age: int) -> str:
 - Introduction to light fantasy elements
 - Themes of independence, responsibility, problem-solving"""
 
-    else:
+    elif age <= 12:
         return """**Age Guidelines (Ages 11-12):**
 - Complex sentences and varied vocabulary
 - Deeper character emotions and motivations
@@ -141,3 +141,34 @@ def _get_age_guidelines(age: int) -> str:
 - Humor, wit, and subtle messages
 - Fantasy and adventure elements
 - Themes of identity, friendship challenges, perseverance"""
+
+    elif age <= 14:
+        return """**Age Guidelines (Ages 13-14):**
+- Sophisticated vocabulary and sentence structure
+- Complex character arcs and internal conflicts
+- Moral dilemmas and ethical questions
+- Subtle humor, irony, and sarcasm
+- Rich world-building and layered plots
+- Themes of self-discovery, peer pressure, social issues
+- Can include mild romantic elements (age-appropriate)"""
+
+    elif age <= 16:
+        return """**Age Guidelines (Ages 15-16):**
+- Advanced vocabulary and literary techniques
+- Nuanced character development with flaws and growth
+- Complex themes (justice, identity, belonging, loss)
+- Multiple perspectives and narrative complexity
+- Mature content handled thoughtfully (no explicit material)
+- Themes of independence, future planning, relationships
+- Can explore difficult topics (grief, discrimination, mental health) with sensitivity"""
+
+    else:  # 17-18
+        return """**Age Guidelines (Ages 17-18):**
+- Literary-quality writing and complex narratives
+- Fully developed characters with psychological depth
+- Sophisticated themes and philosophical questions
+- Can include mature content if story-relevant (handled with care)
+- Realistic portrayals of young adult challenges
+- Themes of transition to adulthood, consequences, purpose
+- May explore complex social, political, or existential themes
+- Note: Still appropriate for young adults, avoid graphic violence/explicit sexual content"""

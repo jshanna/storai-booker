@@ -27,6 +27,19 @@ async def generate_story(request: StoryCreateRequest):
     The actual generation happens asynchronously via Celery workers (Phase 2).
     """
     try:
+        # Validate age against settings
+        from app.models.settings import AppSettings
+        settings = await AppSettings.find_one({"user_id": "default"})
+
+        if settings and settings.age_range.enforce:
+            age = request.generation_inputs.audience_age
+            if age < settings.age_range.min or age > settings.age_range.max:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Audience age {age} is outside allowed range ({settings.age_range.min}-{settings.age_range.max}). "
+                           f"Adjust the age or update settings to allow this age range.",
+                )
+
         # Create new storybook document
         storybook = Storybook(
             title=request.title,

@@ -14,6 +14,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { StoryGenerationFormData } from '@/lib/schemas/story';
+import { useSettings } from '@/lib/hooks';
 
 interface BasicInfoStepProps {
   form: UseFormReturn<StoryGenerationFormData>;
@@ -21,6 +22,12 @@ interface BasicInfoStepProps {
 
 export function BasicInfoStep({ form }: BasicInfoStepProps) {
   const topicValue = form.watch('topic') || '';
+  const { data: settings } = useSettings();
+
+  // Determine age range text
+  const ageRangeText = settings && settings.age_range.enforce
+    ? `${settings.age_range.min}-${settings.age_range.max} years (configured in settings)`
+    : '3-18 years';
 
   return (
     <div className="space-y-6">
@@ -46,7 +53,7 @@ export function BasicInfoStep({ form }: BasicInfoStepProps) {
               />
             </FormControl>
             <FormDescription>
-              Target age for the story (3-18 years)
+              Target age for the story ({ageRangeText})
             </FormDescription>
             <FormMessage />
           </FormItem>

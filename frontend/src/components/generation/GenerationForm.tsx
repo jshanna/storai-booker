@@ -2,7 +2,7 @@
  * Main multi-step story generation form.
  */
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useNavigate } from 'react-router-dom';
@@ -10,8 +10,9 @@ import { ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import { Form } from '@/components/ui/form';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { storyGenerationSchema, StoryGenerationFormData } from '@/lib/schemas/story';
-import { useCreateStory } from '@/lib/hooks';
+import { createStoryGenerationSchema, StoryGenerationFormData } from '@/lib/schemas/story';
+import { useCreateStory, useSettings } from '@/lib/hooks';
+import { FullPageSpinner } from '@/components/shared';
 import { FormProgress, Step } from './FormProgress';
 import { BasicInfoStep } from './BasicInfoStep';
 import { StoryDetailsStep } from './StoryDetailsStep';
@@ -29,11 +30,26 @@ export function GenerationForm() {
   const [currentStep, setCurrentStep] = useState(1);
   const navigate = useNavigate();
   const { mutate: createStory, isPending } = useCreateStory();
+  const { data: settings, isLoading: settingsLoading } = useSettings();
+
+  // Create schema based on settings age range
+  const schema = useMemo(() => {
+    if (!settings || !settings.age_range.enforce) {
+      return createStoryGenerationSchema(3, 18);
+    }
+    return createStoryGenerationSchema(settings.age_range.min, settings.age_range.max);
+  }, [settings]);
+
+  // Calculate default age (midpoint of allowed range)
+  const defaultAge = useMemo(() => {
+    if (!settings || !settings.age_range.enforce) return 7;
+    return Math.floor((settings.age_range.min + settings.age_range.max) / 2);
+  }, [settings]);
 
   const form = useForm<StoryGenerationFormData>({
-    resolver: zodResolver(storyGenerationSchema),
+    resolver: zodResolver(schema),
     defaultValues: {
-      audience_age: 7,
+      audience_age: defaultAge,
       audience_gender: null,
       topic: '',
       setting: '',
@@ -44,6 +60,11 @@ export function GenerationForm() {
       panels_per_page: null,
     },
   });
+
+  // Show loading while fetching settings
+  if (settingsLoading) {
+    return <FullPageSpinner text="Loading settings..." />;
+  }
 
   const validateCurrentStep = async (): Promise<boolean> => {
     let fieldsToValidate: (keyof StoryGenerationFormData)[] = [];

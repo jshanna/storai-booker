@@ -5,17 +5,19 @@
 import { z } from 'zod';
 
 /**
- * Story generation form schema matching backend validation.
+ * Create story generation schema with dynamic age range.
+ * @param minAge Minimum allowed age (default: 3)
+ * @param maxAge Maximum allowed age (default: 18)
  */
-export const storyGenerationSchema = z.object({
+export const createStoryGenerationSchema = (minAge: number = 3, maxAge: number = 18) => z.object({
   audience_age: z
     .number({
       required_error: 'Age is required',
       invalid_type_error: 'Age must be a number',
     })
     .int('Age must be a whole number')
-    .min(3, 'Age must be at least 3')
-    .max(18, 'Age must be at most 18'),
+    .min(minAge, `Age must be at least ${minAge}`)
+    .max(maxAge, `Age must be at most ${maxAge}`),
 
   audience_gender: z.string().optional().nullable(),
 
@@ -71,6 +73,12 @@ export const storyGenerationSchema = z.object({
     .optional()
     .nullable(),
 });
+
+/**
+ * Default story generation schema (ages 3-18).
+ * Use createStoryGenerationSchema() for custom age ranges.
+ */
+export const storyGenerationSchema = createStoryGenerationSchema(3, 18);
 
 /**
  * Inferred TypeScript type from schema.

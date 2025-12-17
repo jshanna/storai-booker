@@ -7,3 +7,4 @@ export * from './useStories';
 export * from './useSettings';
 export * from './useDebounce';
 export * from './usePagination';
+export * from './useAuth';

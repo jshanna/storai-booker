@@ -200,3 +200,48 @@ class MessageResponse(BaseModel):
                 "message": "Operation completed successfully",
             }
         }
+
+
+class OAuthUrlResponse(BaseModel):
+    """Response schema for OAuth authorization URL."""
+
+    authorization_url: str = Field(..., description="URL to redirect user for OAuth")
+    state: str = Field(..., description="State parameter for CSRF protection")
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "authorization_url": "https://accounts.google.com/o/oauth2/v2/auth?...",
+                "state": "abc123xyz789",
+            }
+        }
+
+
+class OAuthCallbackRequest(BaseModel):
+    """Request schema for OAuth callback."""
+
+    code: str = Field(..., description="Authorization code from OAuth provider")
+    state: str = Field(..., description="State parameter for CSRF verification")
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "code": "4/0AX4XfWh...",
+                "state": "abc123xyz789",
+            }
+        }
+
+
+class OAuthProvidersResponse(BaseModel):
+    """Response schema for available OAuth providers."""
+
+    google: bool = Field(..., description="Whether Google OAuth is configured")
+    github: bool = Field(..., description="Whether GitHub OAuth is configured")
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "google": True,
+                "github": True,
+            }
+        }

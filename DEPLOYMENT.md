@@ -320,6 +320,43 @@ docker compose -f docker-compose.prod.yml restart mongodb
 
 ## Security Considerations
 
+### Built-in Security Features (Phase 5)
+
+StorAI-Booker includes production-grade security features:
+
+**Rate Limiting:**
+- 100 requests/minute per IP (configurable)
+- Prevents DoS attacks
+- Returns 429 on limit exceeded
+
+**Input Sanitization:**
+- XSS prevention (script tag removal)
+- SQL injection detection and blocking
+- NoSQL injection prevention
+- Input length limits enforced
+
+**API Key Encryption:**
+- Fernet symmetric encryption (AES-128-CBC + HMAC-SHA256)
+- Keys encrypted at rest in MongoDB
+- PBKDF2 key derivation from SECRET_KEY
+
+**Security Headers:**
+- X-Frame-Options: DENY
+- X-Content-Type-Options: nosniff
+- X-XSS-Protection: 1; mode=block
+- Strict-Transport-Security
+- Content-Security-Policy
+- Permissions-Policy
+
+**Request Tracing:**
+- Unique correlation IDs for every request
+- Full request/response logging with context
+- Error tracking for debugging
+
+**Request Size Limits:**
+- 10MB maximum request body
+- Prevents payload-based DoS attacks
+
 ### 1. Change Default Credentials
 
 **Critical**: Change `MINIO_ROOT_USER` and `MINIO_ROOT_PASSWORD` in `.env.production`
@@ -327,6 +364,12 @@ docker compose -f docker-compose.prod.yml restart mongodb
 ```bash
 # Generate strong password
 openssl rand -base64 32
+```
+
+**Also change SECRET_KEY:**
+```bash
+# In .env.production
+SECRET_KEY=$(openssl rand -base64 32)
 ```
 
 ### 2. Firewall Configuration

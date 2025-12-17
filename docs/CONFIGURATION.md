@@ -185,7 +185,7 @@ S3_REGION=us-east-1
 
 **Example:**
 ```bash
-GOOGLE_API_KEY=YOUR_GOOGLE_API_KEY_HERE
+GOOGLE_API_KEY=your_google_api_key_here
 OPENAI_API_KEY=
 ANTHROPIC_API_KEY=
 DEFAULT_LLM_PROVIDER=google
@@ -454,7 +454,7 @@ LOG_FORMAT=text
 **`.env.production`:**
 ```bash
 # LLM API Keys
-GOOGLE_API_KEY=YOUR_GOOGLE_API_KEY_HERE
+GOOGLE_API_KEY=your_google_api_key_here
 OPENAI_API_KEY=sk-proj-...
 ANTHROPIC_API_KEY=sk-ant-...
 

@@ -45,9 +45,12 @@ async def get_mongodb_client() -> AsyncIOMotorClient:
     return _mongodb_client
 
 
-async def get_app_settings() -> AppSettings:
+async def get_app_settings(user_id: str) -> AppSettings:
     """
-    Get application settings from database.
+    Get application settings for a specific user from database.
+
+    Args:
+        user_id: User ID to get settings for
 
     Returns:
         AppSettings instance
@@ -56,9 +59,13 @@ async def get_app_settings() -> AppSettings:
         ValueError: If settings not found
     """
     await get_mongodb_client()
-    app_settings = await AppSettings.find_one({"user_id": "default"})
+    # Try to get user-specific settings first
+    app_settings = await AppSettings.find_one({"user_id": user_id})
     if not app_settings:
-        raise ValueError("Application settings not found in database")
+        # Fall back to default settings (for migration period)
+        app_settings = await AppSettings.find_one({"user_id": "default"})
+    if not app_settings:
+        raise ValueError(f"Application settings not found for user {user_id}")
     return app_settings
 
 
@@ -102,9 +109,9 @@ async def _update_story_status(
         await story.save()
         logger.info(f"Story {story_id} status updated to: {status}")
 
-        # Invalidate cache when story is updated
-        cache_service.delete(f"story:{story_id}")
-        cache_service.delete_pattern("stories:list:*")
+        # Invalidate cache when story is updated (user-specific)
+        cache_service.delete(f"story:{story.user_id}:{story_id}")
+        cache_service.delete_pattern(f"stories:list:{story.user_id}:*")
 
 
 async def _download_image_from_url(url: str) -> Optional[bytes]:
@@ -300,9 +307,9 @@ async def _generate_story_workflow(story_id: str, task) -> dict:
     story.status = "generating"
     await story.save()
 
-    # Get app settings from database
-    app_settings = await get_app_settings()
-    logger.info(f"Using API provider: {app_settings.primary_llm_provider.name}")
+    # Get app settings from database (user-specific)
+    app_settings = await get_app_settings(story.user_id)
+    logger.info(f"Using API provider: {app_settings.primary_llm_provider.name} for user {story.user_id}")
 
     # Step 0: Content Safety Pre-Check
     logger.info(f"Phase 0: Checking topic appropriateness for age {story.generation_inputs.audience_age}")
@@ -324,9 +331,9 @@ async def _generate_story_workflow(story_id: str, task) -> dict:
         story.error_message = reason
         await story.save()
 
-        # Invalidate cache
-        cache_service.delete(f"story:{story_id}")
-        cache_service.delete_pattern("stories:list:*")
+        # Invalidate cache (user-specific)
+        cache_service.delete(f"story:{story.user_id}:{story_id}")
+        cache_service.delete_pattern(f"stories:list:{story.user_id}:*")
 
         raise ValueError(f"Topic not appropriate for target age: {reason}")
 
@@ -740,9 +747,9 @@ async def _generate_story_workflow(story_id: str, task) -> dict:
         meta={"phase": "complete", "progress": 1.0, "message": "Story generation complete"}
     )
 
-    # Invalidate cache to ensure API returns updated story
-    cache_service.delete(f"story:{story_id}")
-    cache_service.delete_pattern("stories:list:*")
+    # Invalidate cache to ensure API returns updated story (user-specific)
+    cache_service.delete(f"story:{story.user_id}:{story_id}")
+    cache_service.delete_pattern(f"stories:list:{story.user_id}:*")
 
     return {
         "status": "success",

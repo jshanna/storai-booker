@@ -3,7 +3,7 @@
  */
 
 import { Link } from 'react-router-dom';
-import { BookOpen, Trash2, MoreVertical, Eye, Sparkles } from 'lucide-react';
+import { BookOpen, Trash2, MoreVertical, Eye, Sparkles, Download } from 'lucide-react';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -18,6 +18,7 @@ import { formatRelativeTime, formatPageCount, getStatusColor } from '@/lib/utils
 import type { Story } from '@/types/api';
 import { Progress } from '@/components/ui/progress';
 import { GenerationArtifacts } from '@/components/reader/GenerationArtifacts';
+import { ExportDialog } from '@/components/export';
 import { useState } from 'react';
 
 interface StoryCardProps {
@@ -27,6 +28,7 @@ interface StoryCardProps {
 
 export function StoryCard({ story, onDelete }: StoryCardProps) {
   const [artifactsOpen, setArtifactsOpen] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
   const isGenerating = story.status === 'generating';
   const hasError = story.status === 'error';
   const isComplete = story.status === 'complete';
@@ -84,6 +86,10 @@ export function StoryCard({ story, onDelete }: StoryCardProps) {
                       <Eye className="mr-2 h-4 w-4" />
                       Read Story
                     </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setExportOpen(true)}>
+                    <Download className="mr-2 h-4 w-4" />
+                    Export
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => setArtifactsOpen(true)}>
                     <Sparkles className="mr-2 h-4 w-4" />
@@ -163,6 +169,16 @@ export function StoryCard({ story, onDelete }: StoryCardProps) {
           story={story}
           open={artifactsOpen}
           onOpenChange={setArtifactsOpen}
+        />
+      )}
+
+      {/* Export Dialog */}
+      {isComplete && (
+        <ExportDialog
+          storyId={story.id}
+          storyTitle={story.title}
+          open={exportOpen}
+          onOpenChange={setExportOpen}
         />
       )}
     </Card>

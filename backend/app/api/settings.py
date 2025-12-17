@@ -1,40 +1,45 @@
 """API routes for application settings management."""
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, Depends
 from loguru import logger
 
 from app.models.settings import AppSettings
+from app.models.user import User
 from app.schemas.settings import SettingsUpdateRequest, SettingsResponse
 from app.services.cache import cache_service
+from app.api.dependencies import get_current_active_user
 
 router = APIRouter()
 
 
 @router.get("", response_model=SettingsResponse)
-async def get_settings():
+async def get_settings(
+    current_user: User = Depends(get_current_active_user),
+):
     """
-    Get application settings.
+    Get application settings for the current user.
 
-    Returns the settings for the default user. In Phase 6 (multi-user),
-    this will be scoped to the authenticated user.
+    Requires authentication. Returns user-specific settings.
     """
     try:
-        # Build cache key
-        cache_key = "settings:default"
+        user_id = str(current_user.id)
+
+        # Build cache key (user-specific)
+        cache_key = f"settings:{user_id}"
 
         # Try to get from cache
         cached = cache_service.get(cache_key)
         if cached:
-            logger.debug("Cache hit for settings")
+            logger.debug(f"Cache hit for settings: {user_id}")
             return SettingsResponse(**cached)
 
-        # Get or create default settings
-        settings = await AppSettings.find_one({"user_id": "default"})
+        # Get or create user settings
+        settings = await AppSettings.find_one({"user_id": user_id})
 
         if not settings:
-            # Create default settings if they don't exist
-            settings = AppSettings(user_id="default")
+            # Create default settings for this user
+            settings = AppSettings(user_id=user_id)
             await settings.insert()
-            logger.info("Created default application settings")
+            logger.info(f"Created default settings for user {user_id}")
 
         response = SettingsResponse(
             id=str(settings.id),
@@ -60,20 +65,26 @@ async def get_settings():
 
 
 @router.put("", response_model=SettingsResponse)
-async def update_settings(request: SettingsUpdateRequest):
+async def update_settings(
+    request: SettingsUpdateRequest,
+    current_user: User = Depends(get_current_active_user),
+):
     """
-    Update application settings.
+    Update application settings for the current user.
 
     Only provided fields will be updated. Omitted fields remain unchanged.
+    Requires authentication.
     """
     try:
+        user_id = str(current_user.id)
+
         # Get or create settings
-        settings = await AppSettings.find_one({"user_id": "default"})
+        settings = await AppSettings.find_one({"user_id": user_id})
 
         if not settings:
-            settings = AppSettings(user_id="default")
+            settings = AppSettings(user_id=user_id)
             await settings.insert()
-            logger.info("Created default application settings")
+            logger.info(f"Created default settings for user {user_id}")
 
         # Update only provided fields
         update_data = request.model_dump(exclude_unset=True)
@@ -82,10 +93,10 @@ async def update_settings(request: SettingsUpdateRequest):
             setattr(settings, field, value)
 
         await settings.save()
-        logger.info("Updated application settings")
+        logger.info(f"Updated settings for user {user_id}")
 
         # Invalidate cache
-        cache_service.delete("settings:default")
+        cache_service.delete(f"settings:{user_id}")
 
         return SettingsResponse(
             id=str(settings.id),
@@ -106,26 +117,31 @@ async def update_settings(request: SettingsUpdateRequest):
 
 
 @router.post("/reset", response_model=SettingsResponse)
-async def reset_settings():
+async def reset_settings(
+    current_user: User = Depends(get_current_active_user),
+):
     """
-    Reset settings to defaults.
+    Reset settings to defaults for the current user.
 
     Deletes current settings and creates fresh defaults.
+    Requires authentication.
     """
     try:
+        user_id = str(current_user.id)
+
         # Delete existing settings
-        settings = await AppSettings.find_one({"user_id": "default"})
+        settings = await AppSettings.find_one({"user_id": user_id})
         if settings:
             await settings.delete()
-            logger.info("Deleted existing settings")
+            logger.info(f"Deleted existing settings for user {user_id}")
 
         # Create new default settings
-        settings = AppSettings(user_id="default")
+        settings = AppSettings(user_id=user_id)
         await settings.insert()
-        logger.info("Reset settings to defaults")
+        logger.info(f"Reset settings to defaults for user {user_id}")
 
         # Invalidate cache
-        cache_service.delete("settings:default")
+        cache_service.delete(f"settings:{user_id}")
 
         return SettingsResponse(
             id=str(settings.id),

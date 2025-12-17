@@ -55,6 +55,9 @@ class Page(BaseModel):
 class Storybook(Document):
     """Storybook document model."""
 
+    # User ownership
+    user_id: Indexed(str) = Field(..., description="Owner user ID")  # type: ignore
+
     title: Indexed(str) = Field(..., description="Story title")  # type: ignore
     created_at: Indexed(datetime) = Field(default_factory=lambda: datetime.now(timezone.utc))  # type: ignore
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
@@ -70,15 +73,16 @@ class Storybook(Document):
 
         name = "storybooks"
         indexes = [
-            # Single field indexes
+            # User-scoped indexes (most queries will filter by user_id)
+            IndexModel([("user_id", 1), ("created_at", DESCENDING)]),
+            IndexModel([("user_id", 1), ("status", 1)]),
+            IndexModel([("user_id", 1), ("generation_inputs.format", 1)]),
+            IndexModel([("user_id", 1), ("status", 1), ("created_at", DESCENDING)]),
+            IndexModel([("user_id", 1), ("generation_inputs.format", 1), ("created_at", DESCENDING)]),
+            # Single field indexes for admin queries
             IndexModel([("created_at", DESCENDING)]),
-            IndexModel([("generation_inputs.format", 1)]),
             IndexModel([("status", 1)]),
             IndexModel([("title", "text")]),  # Text search on title
-            # Compound indexes for common filter combinations
-            IndexModel([("status", 1), ("created_at", DESCENDING)]),
-            IndexModel([("generation_inputs.format", 1), ("created_at", DESCENDING)]),
-            IndexModel([("status", 1), ("generation_inputs.format", 1), ("created_at", DESCENDING)]),
         ]
         # Configure Beanie to use timezone-aware datetimes
         use_state_management = True

@@ -78,3 +78,49 @@ def sample_settings_data():
             "image_model": "dall-e-3",
         },
     }
+
+
+@pytest.fixture
+async def test_user(init_test_db):
+    """Create a test user for authentication."""
+    from app.services.auth import auth_service
+
+    user = await auth_service.create_user(
+        email="testuser@example.com",
+        password="TestPass123",
+        full_name="Test User",
+    )
+    return user
+
+
+@pytest.fixture
+async def auth_headers(test_user):
+    """Get authentication headers for the test user."""
+    from app.services.auth import auth_service
+
+    tokens = auth_service.create_token_pair(test_user)
+    return {"Authorization": f"Bearer {tokens['access_token']}"}
+
+
+@pytest.fixture
+async def authenticated_client(init_test_db) -> AsyncGenerator[tuple, None]:
+    """Create a test client with an authenticated user."""
+    from app.services.auth import auth_service
+
+    # Create user
+    user = await auth_service.create_user(
+        email="authuser@example.com",
+        password="TestPass123",
+        full_name="Auth User",
+    )
+
+    # Get tokens
+    tokens = auth_service.create_token_pair(user)
+    headers = {"Authorization": f"Bearer {tokens['access_token']}"}
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://test",
+        headers=headers,
+    ) as ac:
+        yield ac, user

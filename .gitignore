@@ -27,10 +27,15 @@ build/
 .nuxt/
 .cache/
 
-# Environment
+# Environment files (NEVER COMMIT - contain secrets!)
 .env
 .env.local
+.env.production
+.env.staging
+.env.development
 .env.*.local
+*.key
+*.pem
 
 # IDEs
 .vscode/

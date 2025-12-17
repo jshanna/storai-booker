@@ -8,6 +8,30 @@ StorAI-Booker is an AI-powered storybook and comic book generation application t
 
 **Current Status:** Phase 1 Complete (Core Backend API). The project is on branch `phase-1/core-backend-api` with a functional REST API for story management and settings.
 
+## ⚠️ CRITICAL SECURITY WARNING
+
+**NEVER COMMIT API KEYS OR SECRETS TO GIT**
+
+- `.env`, `.env.production`, `.env.staging` and similar files contain sensitive credentials
+- These files are in `.gitignore` and should NEVER be committed to the repository
+- Always use placeholder values in example files (`.env.example`, `.env.production.example`)
+- If you accidentally expose an API key (even in chat), it MUST be rotated immediately
+- Real API keys should only exist in:
+  - Local `.env` files (gitignored)
+  - Production environment variables (server/container config)
+  - Secure secrets management systems (AWS Secrets Manager, etc.)
+
+**Before Reading/Modifying Environment Files:**
+- Verify the file is gitignored before reading it
+- Never output API keys in responses
+- Use placeholders like `your_api_key_here` when showing examples
+
+**API Key Security Checklist:**
+- ✅ All `.env*` files are in `.gitignore`
+- ✅ Only `.env.example` files are committed (with placeholders)
+- ✅ Real API keys are never in git history
+- ✅ Exposed keys are rotated immediately
+
 ## Essential Commands
 
 ### Starting the Application

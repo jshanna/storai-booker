@@ -1,11 +1,20 @@
 /**
- * Header component with navigation and dark mode toggle.
+ * Header component with navigation, user menu, and dark mode toggle.
  */
 
-import { Link, useLocation } from 'react-router-dom';
-import { BookOpen } from 'lucide-react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { BookOpen, User, LogOut, Settings } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { DarkModeToggle } from './DarkModeToggle';
+import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { useAuth } from '@/lib/hooks/useAuth';
 
 const navigation = [
   { name: 'Home', href: '/' },
@@ -16,6 +25,13 @@ const navigation = [
 
 export function Header() {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user, isAuthenticated, logout, isLoading } = useAuth();
+
+  const handleLogout = async () => {
+    await logout();
+    navigate('/');
+  };
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -44,8 +60,73 @@ export function Header() {
           ))}
         </nav>
 
-        {/* Dark mode toggle */}
-        <DarkModeToggle />
+        {/* Right side actions */}
+        <div className="flex items-center gap-2">
+          {/* Dark mode toggle */}
+          <DarkModeToggle />
+
+          {/* Auth section */}
+          {isLoading ? (
+            <div className="h-8 w-8 rounded-full bg-muted animate-pulse" />
+          ) : isAuthenticated && user ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" className="flex items-center gap-2">
+                  {user.avatar_url ? (
+                    <img
+                      src={user.avatar_url}
+                      alt={user.full_name || user.email}
+                      className="h-6 w-6 rounded-full"
+                    />
+                  ) : (
+                    <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center">
+                      <User className="h-4 w-4 text-primary" />
+                    </div>
+                  )}
+                  <span className="hidden sm:inline text-sm max-w-[100px] truncate">
+                    {user.full_name || user.email.split('@')[0]}
+                  </span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <div className="px-2 py-1.5">
+                  <p className="text-sm font-medium truncate">{user.full_name || 'User'}</p>
+                  <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+                </div>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <Link to="/profile" className="cursor-pointer">
+                    <User className="mr-2 h-4 w-4" />
+                    Profile
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to="/settings" className="cursor-pointer">
+                    <Settings className="mr-2 h-4 w-4" />
+                    Settings
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={handleLogout}
+                  className="cursor-pointer text-destructive focus:text-destructive"
+                >
+                  <LogOut className="mr-2 h-4 w-4" />
+                  Sign out
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" size="sm" asChild>
+                <Link to="/login">Sign in</Link>
+              </Button>
+              <Button size="sm" asChild className="hidden sm:inline-flex">
+                <Link to="/register">Sign up</Link>
+              </Button>
+            </div>
+          )}
+        </div>
       </div>
     </header>
   );

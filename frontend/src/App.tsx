@@ -7,7 +7,9 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { Layout } from '@/components/layout/Layout';
 import { ErrorBoundary, FullPageSpinner } from '@/components/shared';
+import { ProtectedRoute } from '@/components/auth';
 import { Toaster } from '@/components/ui/toaster';
+import { useAuthInit } from '@/lib/hooks/useAuth';
 import { HomePage } from '@/pages';
 
 // Lazy load pages for code splitting
@@ -16,6 +18,10 @@ const LibraryPage = lazy(() => import('@/pages/LibraryPage').then(m => ({ defaul
 const ReaderPage = lazy(() => import('@/pages/ReaderPage').then(m => ({ default: m.ReaderPage })));
 const SettingsPage = lazy(() => import('@/pages/SettingsPage').then(m => ({ default: m.SettingsPage })));
 const NotFoundPage = lazy(() => import('@/pages/NotFoundPage').then(m => ({ default: m.NotFoundPage })));
+const LoginPage = lazy(() => import('@/pages/LoginPage').then(m => ({ default: m.LoginPage })));
+const RegisterPage = lazy(() => import('@/pages/RegisterPage').then(m => ({ default: m.RegisterPage })));
+const ProfilePage = lazy(() => import('@/pages/ProfilePage').then(m => ({ default: m.ProfilePage })));
+const OAuthCallbackPage = lazy(() => import('@/pages/OAuthCallbackPage').then(m => ({ default: m.OAuthCallbackPage })));
 
 // Create React Query client
 const queryClient = new QueryClient({
@@ -28,23 +34,79 @@ const queryClient = new QueryClient({
   },
 });
 
+/**
+ * App content component with auth initialization.
+ */
+function AppContent() {
+  // Initialize auth on app mount
+  useAuthInit();
+
+  return (
+    <Layout>
+      <Suspense fallback={<FullPageSpinner text="Loading..." />}>
+        <Routes>
+          {/* Public routes */}
+          <Route path="/" element={<HomePage />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
+          <Route path="/auth/callback" element={<OAuthCallbackPage />} />
+
+          {/* Protected routes */}
+          <Route
+            path="/generate"
+            element={
+              <ProtectedRoute>
+                <GeneratePage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/library"
+            element={
+              <ProtectedRoute>
+                <LibraryPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/reader/:id"
+            element={
+              <ProtectedRoute>
+                <ReaderPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/settings"
+            element={
+              <ProtectedRoute>
+                <SettingsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/profile"
+            element={
+              <ProtectedRoute>
+                <ProfilePage />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Catch-all */}
+          <Route path="*" element={<NotFoundPage />} />
+        </Routes>
+      </Suspense>
+    </Layout>
+  );
+}
+
 function App() {
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
         <BrowserRouter>
-          <Layout>
-            <Suspense fallback={<FullPageSpinner text="Loading..." />}>
-              <Routes>
-                <Route path="/" element={<HomePage />} />
-                <Route path="/generate" element={<GeneratePage />} />
-                <Route path="/library" element={<LibraryPage />} />
-                <Route path="/reader/:id" element={<ReaderPage />} />
-                <Route path="/settings" element={<SettingsPage />} />
-                <Route path="*" element={<NotFoundPage />} />
-              </Routes>
-            </Suspense>
-          </Layout>
+          <AppContent />
         </BrowserRouter>
         <Toaster />
       </QueryClientProvider>

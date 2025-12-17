@@ -16,6 +16,7 @@ from app.tasks.story_generation import generate_story_task
 from app.services.cache import cache_service
 from app.services.content_safety import ContentSafetyService
 from app.services.llm.provider_factory import LLMProviderFactory
+from app.services.sanitizer import sanitizer
 
 router = APIRouter()
 
@@ -29,6 +30,26 @@ async def generate_story(request: StoryCreateRequest):
     The actual generation happens asynchronously via Celery workers (Phase 2).
     """
     try:
+        # Sanitize all user inputs to prevent XSS and injection attacks
+        try:
+            sanitized = sanitizer.sanitize_all_inputs(
+                title=request.title,
+                topic=request.generation_inputs.topic,
+                setting=request.generation_inputs.setting,
+                characters=request.generation_inputs.characters,
+            )
+            # Update request with sanitized values
+            request.title = sanitized['title']
+            request.generation_inputs.topic = sanitized['topic']
+            request.generation_inputs.setting = sanitized['setting']
+            request.generation_inputs.characters = sanitized['characters']
+        except ValueError as e:
+            logger.warning(f"Input sanitization failed: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=str(e),
+            )
+
         # Validate age against settings
         from app.models.settings import AppSettings
         settings = await AppSettings.find_one({"user_id": "default"})

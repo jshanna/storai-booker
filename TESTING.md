@@ -1,467 +1,364 @@
 # 🧪 StorAI-Booker Testing Guide
 
-This guide will help you test the Phase 0 MVP setup on your local machine.
+Guide for testing the StorAI-Booker application.
 
-## Prerequisites Checklist
+## Testing Strategy
 
-Before testing, ensure you have:
-- [ ] Docker and Docker Compose installed
-- [ ] Python 3.11+ installed
-- [ ] Node.js 18+ installed
-- [ ] Poetry installed (`curl -sSL https://install.python-poetry.org | python3 -`)
+### Current Test Coverage (Phase 5.1 Complete)
 
-## Test 1: Docker Services ✓
+**Backend:**
+- ✅ API endpoint integration tests (pytest) - 14 tests
+- ✅ Storage service unit tests - 10 tests
+- ✅ Agent unit tests - 10 tests
+- ✅ Prompt template tests - 10 tests
+- ✅ Database operations tests
+- ✅ Error handling tests
+- ✅ **Overall: 44 passing tests, 49% coverage**
+- ⏳ E2E workflow tests (deferred to Phase 5.3)
 
-### Start Core Services
+**Frontend:**
+- ✅ Manual testing through UI
+- ⏳ Component tests (Phase 5.3)
+- ⏳ E2E tests with Playwright (Phase 5.3)
+
+## Quick Test Checklist
+
+### 1. Infrastructure Services ✅
 
 ```bash
-# Navigate to project root
-cd storai-booker
-
-# Start MongoDB, Redis, and MinIO
+# Start services
 docker compose up -d
 
-# Check service status
+# Verify all running
 docker compose ps
+
+# Expected services:
+# - storai-mongodb (port 27017)
+# - storai-redis (port 6379)
+# - storai-minio (ports 9000, 9001)
 ```
 
-**Expected Output:**
-```
-NAME                  STATUS         PORTS
-storai-mongodb        Up (healthy)   27017
-storai-redis          Up (healthy)   6379
-storai-minio          Up (healthy)   9000, 9001
-storai-minio-setup    Exited (0)
-```
-
-### Verify Services
-
-#### 1. MongoDB
-```bash
-# Test MongoDB connection
-docker exec -it storai-mongodb mongosh --eval "db.adminCommand('ping')"
-```
-**Expected:** `{ ok: 1 }`
-
-#### 2. Redis
-```bash
-# Test Redis connection
-docker exec -it storai-redis redis-cli ping
-```
-**Expected:** `PONG`
-
-#### 3. MinIO
-Open browser to: http://localhost:9001
-- **Username:** minioadmin
-- **Password:** minioadmin
-- **Expected:** MinIO console should load
-- **Verify:** `storai-booker-images` bucket exists
-
-### View Service Logs
-
-```bash
-# All services
-docker compose logs -f
-
-# Specific service
-docker compose logs -f mongodb
-```
-
-### Stop Services
-
-```bash
-# Stop all services
-docker compose down
-
-# Stop and remove volumes (fresh start)
-docker compose down -v
-```
-
-## Test 2: Backend (Python + FastAPI) ✓
-
-### Install Dependencies
+### 2. Backend API ✅
 
 ```bash
 cd backend
 
-# Install dependencies with Poetry
-poetry install
+# Run test suite
+poetry run pytest -v
 
-# Verify installation
-poetry show
-```
+# Run with coverage
+poetry run pytest --cov=app
 
-**Expected:** List of installed packages including:
-- fastapi
-- uvicorn
-- motor
-- beanie
-- pydantic
-- celery
-
-### Create Local Environment
-
-```bash
-# Copy environment template
-cp .env.example .env
-
-# Edit .env file and set (optional for basic testing):
-# - OPENAI_API_KEY, ANTHROPIC_API_KEY, or GOOGLE_API_KEY
-# - Other values can use defaults
-```
-
-### Run Backend Server
-
-```bash
-# Activate Poetry virtual environment
-poetry shell
-
-# Run with Python
-python main.py
-
-# OR run with uvicorn directly
-uvicorn main:app --reload
-```
-
-**Expected Output:**
-```
-INFO:     Started server process
-INFO:     Waiting for application startup.
-INFO:     Connected to MongoDB at mongodb://localhost:27017
-INFO:     Beanie ODM initialized successfully
-INFO:     Application startup complete.
-INFO:     Uvicorn running on http://0.0.0.0:8000
-```
-
-### Test Backend Endpoints
-
-Open your browser or use `curl`:
-
-#### 1. Health Check
-```bash
+# Check API health
 curl http://localhost:8000/health
 ```
-**Expected:**
-```json
-{
-  "status": "healthy",
-  "app": "StorAI-Booker",
-  "version": "0.1.0",
-  "environment": "development"
-}
-```
 
-#### 2. API Documentation
-- Open: http://localhost:8000/api/docs
-- **Expected:** Swagger UI interface loads
+**Expected pytest output:**
+- All tests passing
+- Coverage reports for app/ modules
 
-#### 3. Alternative API Docs
-- Open: http://localhost:8000/api/redoc
-- **Expected:** ReDoc interface loads
-
-#### 4. OpenAPI Schema
-```bash
-curl http://localhost:8000/api/openapi.json
-```
-**Expected:** JSON schema with API definition
-
-### Test Backend Code Quality
-
-```bash
-# Run linter
-poetry run ruff check .
-
-# Run formatter
-poetry run black --check .
-
-# Run type checker
-poetry run mypy .
-```
-
-**Expected:** No errors (warnings are okay for now)
-
-### Test Database Connection
-
-```bash
-# In Poetry shell
-python -c "from app.core.database import db; import asyncio; asyncio.run(db.connect_db())"
-```
-
-**Expected:**
-```
-Connected to MongoDB at mongodb://localhost:27017
-Beanie ODM initialized successfully
-```
-
-## Test 3: Frontend (React + TypeScript) ✓
-
-### Install Dependencies
+### 3. Frontend Application ✅
 
 ```bash
 cd frontend
 
-# Install npm packages
-npm install
-
-# Verify installation
-npm list --depth=0
-```
-
-**Expected:** List of packages including:
-- react
-- react-dom
-- react-router-dom
-- vite
-- typescript
-
-### Run Development Server
-
-```bash
-npm run dev
-```
-
-**Expected Output:**
-```
-  VITE v5.x.x  ready in xxx ms
-
-  ➜  Local:   http://localhost:5173/
-  ➜  Network: http://192.168.x.x:5173/
-```
-
-### Test Frontend in Browser
-
-1. **Open:** http://localhost:5173
-2. **Expected:**
-   - Page loads with "📚 StorAI-Booker" header
-   - "AI-Powered Storybook Generation - MVP" subtitle
-   - Welcome message
-   - Navigation links work:
-     - `/generate` - Shows "Generate Story" page
-     - `/library` - Shows "Story Library" page
-     - `/settings` - Shows "Settings" page
-
-### Test Frontend Build
-
-```bash
-# Build for production
+# Build check
 npm run build
 
-# Preview production build
-npm run preview
-```
-
-**Expected:**
-- Build completes without errors
-- Preview server starts on http://localhost:4173
-
-### Test Code Quality
-
-```bash
-# Run linter
-npm run lint
-
-# Run formatter
-npm run format
-```
-
-**Expected:** No errors
-
-## Test 4: Full Stack Integration ✓
-
-### Start Everything
-
-**Terminal 1 - Docker Services:**
-```bash
-docker compose up -d
-docker compose logs -f
-```
-
-**Terminal 2 - Backend:**
-```bash
-cd backend
-poetry shell
-python main.py
-```
-
-**Terminal 3 - Frontend:**
-```bash
-cd frontend
+# Development server
 npm run dev
+
+# Navigate to http://localhost:5173
 ```
 
-### Verify Integration
+## Manual Testing Guide
 
-1. **Frontend:** http://localhost:5173
-2. **Backend API:** http://localhost:8000/health
-3. **API Docs:** http://localhost:8000/api/docs
-4. **MinIO:** http://localhost:9001
+### Complete User Flow Test
 
-### Test API Proxy
+#### Prerequisites
+1. All services running (Docker + Backend + Celery + Frontend)
+2. Google API key configured in backend/.env
 
-The frontend is configured to proxy `/api/*` requests to the backend.
+#### Test Steps
 
-From browser console (http://localhost:5173):
-```javascript
-fetch('/api/health')
-  .then(r => r.json())
-  .then(console.log)
+**1. Settings Configuration**
+```
+→ Navigate to http://localhost:5173/settings
+→ Add Google API key in "API Keys & Providers" tab
+→ Click "Save Settings"
+→ Verify success toast appears
 ```
 
-**Expected:** Health check response from backend
-
-## Test 5: Docker Full Stack (Optional) ✓
-
-### Build and Run Everything in Docker
-
-```bash
-# Start all services including backend
-docker compose --profile full up -d --build
-
-# Check all services
-docker compose ps
+**2. Story Generation**
+```
+→ Navigate to /generate
+→ Fill in form:
+   - Audience: Child's name and age (e.g., "Emma", 7)
+   - Topic: "A brave squirrel exploring a magical forest"
+   - Setting: "Enchanted forest"
+   - Characters: "Hazel the squirrel"
+   - Pages: 5-10
+→ Click "Generate Story"
+→ Monitor progress bar (should show phases)
+→ Wait for completion (3-5 minutes)
 ```
 
-**Expected Services:**
-- mongodb
-- redis
-- minio
-- backend (new)
-- celery-worker (new)
-- flower (new)
-
-### Access Dockerized Services
-
-- **Backend:** http://localhost:8000/api/docs
-- **Frontend:** http://localhost:5173 (still run locally)
-- **Flower:** http://localhost:5555
-
-### View Logs
-
-```bash
-# All services
-docker compose logs -f
-
-# Backend only
-docker compose logs -f backend
-
-# Celery worker
-docker compose logs -f celery-worker
+**3. Library View**
+```
+→ Navigate to /library
+→ Verify new story appears
+→ Test search box (search by topic/title)
+→ Test filter dropdown (All Stories/Storybook/Comic)
+→ Test sort dropdown (Newest/Oldest/Title)
+→ Click story card to open reader
 ```
 
-## Common Issues & Solutions
-
-### Issue: "Cannot connect to MongoDB"
-
-**Solution:**
-```bash
-# Check MongoDB is running
-docker compose ps mongodb
-
-# Check MongoDB logs
-docker compose logs mongodb
-
-# Restart MongoDB
-docker compose restart mongodb
+**4. Story Reader**
+```
+→ Verify cover image loads
+→ Verify title displays
+→ Use Next/Previous buttons to navigate
+→ Test keyboard navigation (Arrow keys)
+→ Test fullscreen mode (button in bottom navigation)
+→ Verify page numbers update
+→ Exit reader
 ```
 
-### Issue: "Port already in use"
-
-**Solution:**
-```bash
-# Find process using port 8000
-lsof -i :8000
-
-# Kill process
-kill -9 <PID>
-
-# Or use different port
-PORT=8001 python main.py
+**5. Generation Artifacts**
+```
+→ In library, click three-dot menu on story card
+→ Click "View Artifacts"
+→ Check "Character Sheets" tab:
+   - Verify reference images load
+   - Verify character descriptions show
+→ Check "Page Prompts" tab:
+   - Verify story text shows
+   - Verify illustration prompts show
+→ Close dialog
 ```
 
-### Issue: "Poetry command not found"
-
-**Solution:**
-```bash
-# Install Poetry
-curl -sSL https://install.python-poetry.org | python3 -
-
-# Add to PATH (add to ~/.bashrc or ~/.zshrc)
-export PATH="$HOME/.local/bin:$PATH"
+**6. Story Deletion**
+```
+→ Click three-dot menu on story card
+→ Click "Delete"
+→ Confirm deletion
+→ Verify story removed from library
 ```
 
-### Issue: "npm install fails"
+## Backend Unit Tests
 
-**Solution:**
-```bash
-# Clear cache
-npm cache clean --force
+### Running Tests
 
-# Remove node_modules
-rm -rf node_modules package-lock.json
-
-# Reinstall
-npm install
-```
-
-### Issue: "ModuleNotFoundError in Python"
-
-**Solution:**
 ```bash
 cd backend
-
-# Ensure Poetry shell is active
 poetry shell
 
-# Reinstall dependencies
-poetry install --no-cache
+# All tests
+pytest
+
+# Specific test file
+pytest tests/test_api_stories.py
+
+# Specific test
+pytest tests/test_api_stories.py::test_create_story
+
+# With verbose output
+pytest -v
+
+# With coverage
+pytest --cov=app
+
+# Coverage report
+pytest --cov=app --cov-report=html
+open htmlcov/index.html
+
+# Quick summary
+pytest -q
 ```
 
-## Verification Checklist
+### Test Organization
 
-After testing, verify:
+```
+backend/tests/
+├── conftest.py              # Pytest fixtures & test database setup
+├── test_api_stories.py      # Story CRUD endpoints (14 tests)
+├── test_api_settings.py     # Settings endpoints (4 tests)
+├── test_agents.py           # Agent unit tests (10 tests)
+├── test_storage.py          # Storage service tests (10 tests)
+├── test_prompts.py          # Prompt template tests (10 tests)
+├── test_llm_providers.py    # LLM provider tests (12 tests, skipped)
+└── test_story_generation.py # Workflow tests (7 tests, skipped)
+```
 
-- [ ] MongoDB is running and accessible
-- [ ] Redis is running and accessible
-- [ ] MinIO is running with bucket created
-- [ ] Backend starts without errors
-- [ ] Backend health endpoint responds
-- [ ] Backend API docs are accessible
-- [ ] Frontend starts without errors
-- [ ] Frontend pages load and navigate
-- [ ] Frontend can call backend API
-- [ ] No console errors in browser
-- [ ] No Python errors in backend logs
+### Coverage Summary (Phase 5.1)
 
-## Next Steps
+**Excellent Coverage (80%+):**
+- ✅ Models: 100%
+- ✅ Schemas: 100%
+- ✅ Story Planning Prompts: 100%
+- ✅ Page Generation Prompts: 100%
+- ✅ Validation Prompts: 97%
+- ✅ Config: 96%
+- ✅ Celery App: 92%
+- ✅ Middleware: 88%
+- ✅ Coordinator Agent: 88%
+- ✅ Validator Agent: 87%
+- ✅ Page Generator Agent: 82%
+- ✅ Settings API: 81%
+- ✅ Storage Service: 80%
 
-Once all tests pass:
+**Integration Testing (Deferred to E2E):**
+- ⏳ Story Generation Task: 9% (complex Celery workflows)
+- ⏳ Google LLM Provider: 16% (SDK integration)
+- ⏳ Image Services: 15-47% (Google Imagen integration)
+- ⏳ Provider Factories: 30-35% (settings dependencies)
+- ⏳ Stories API: 67% (async workflow endpoints)
 
-1. ✅ Phase 0 is verified and working
-2. 📝 Ready to begin Phase 1: Core Backend & Database
-3. 🚀 Start implementing API endpoints and services
+## API Testing
 
-## Cleanup
+### Using Swagger UI
+
+1. Start backend: `poetry run python main.py`
+2. Open http://localhost:8000/api/docs
+3. Test endpoints interactively
+
+### Using curl
 
 ```bash
-# Stop all services
-docker compose down
+# Health check
+curl http://localhost:8000/health
 
-# Remove volumes (fresh start next time)
-docker compose down -v
+# List stories
+curl http://localhost:8000/api/stories
 
-# Exit Poetry shell
+# Generate story
+curl -X POST http://localhost:8000/api/stories/generate \
+  -H "Content-Type: application/json" \
+  -d '{
+    "audience_age": 7,
+    "topic": "A brave squirrel",
+    "setting": "Magical forest",
+    "format": "storybook",
+    "illustration_style": "watercolor",
+    "characters": ["Hazel"],
+    "page_count": 5
+  }'
+
+# Get story by ID
+curl http://localhost:8000/api/stories/{story_id}
+
+# Delete story
+curl -X DELETE http://localhost:8000/api/stories/{story_id}
+```
+
+## Performance Testing
+
+### Story Generation Time
+
+Expected times for different page counts:
+- 5 pages: ~2-3 minutes
+- 10 pages: ~4-5 minutes
+- 15 pages: ~6-8 minutes
+- 20 pages: ~8-10 minutes
+
+### Database Query Performance
+
+```bash
+# Monitor MongoDB queries
+docker exec -it storai-mongodb mongosh
+
+# Enable profiling
+use storai
+db.setProfilingLevel(2)
+
+# Check slow queries
+db.system.profile.find().sort({ts:-1}).limit(5)
+```
+
+## Debugging
+
+### Backend Logs
+
+```bash
+# API server logs (in terminal running main.py)
+# Shows request/response and errors
+
+# Celery worker logs (in terminal running celery)
+# Shows task execution and errors
+```
+
+### Frontend Logs
+
+```bash
+# Browser console (F12)
+# Shows API calls, React errors, state changes
+
+# Network tab
+# Monitor API requests and responses
+```
+
+### Common Issues
+
+**Story stuck at "Generating..."**
+- Check Celery worker is running
+- Check worker logs for errors
+- Verify Google API key is valid
+- Check for safety filter blocks in logs
+
+**Images not loading**
+- Verify MinIO is running
+- Check S3_ENDPOINT_URL in .env
+- Verify signed URLs haven't expired
+
+**API errors**
+- Check backend logs for stack traces
+- Verify MongoDB is connected
+- Check /health endpoint
+
+## Test Data Cleanup
+
+### Clear all stories
+
+```bash
+# Via MongoDB
+docker exec -it storai-mongodb mongosh
+use storai
+db.storybooks.deleteMany({})
 exit
 
-# Stop frontend dev server
-Ctrl+C
+# Via API
+curl -X DELETE http://localhost:8000/api/stories/{story_id}
 ```
+
+### Clear MinIO storage
+
+```bash
+# Access MinIO console
+open http://localhost:9001
+
+# Login: minioadmin / minioadmin
+# Navigate to buckets → storai-booker-images
+# Delete objects as needed
+```
+
+### Reset database
+
+```bash
+docker compose down -v
+docker compose up -d
+```
+
+## CI/CD Testing (Future - Phase 5)
+
+Planned automated testing:
+- GitHub Actions for pytest on PR
+- Frontend build checks
+- Linting and type checking
+- E2E tests with Playwright
+- Coverage reports
 
 ---
 
-**Testing Status:**
-- Phase 0 Setup: ✅ Ready to test
-- All dependencies configured: ✅
-- Docker compose ready: ✅
-- Project structure complete: ✅
-
-**Estimated Testing Time:** 15-20 minutes
+**Current Status:** Phase 4 Complete - Manual testing functional
+**Next Phase:** Phase 5 - Automated test suite expansion
+**Last Updated:** 2025-12-16

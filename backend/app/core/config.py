@@ -40,6 +40,7 @@ class Settings(BaseSettings):
 
     # S3/MinIO Settings
     s3_endpoint_url: str | None = Field(default=None, alias="S3_ENDPOINT_URL")
+    s3_public_url: str | None = Field(default=None, alias="S3_PUBLIC_URL")
     s3_access_key_id: str = Field(default="", alias="S3_ACCESS_KEY_ID")
     s3_secret_access_key: str = Field(default="", alias="S3_SECRET_ACCESS_KEY")
     s3_bucket_name: str = Field(default="storai-booker-images", alias="S3_BUCKET_NAME")

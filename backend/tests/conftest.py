@@ -2,7 +2,7 @@
 import pytest
 import asyncio
 from typing import AsyncGenerator
-from httpx import AsyncClient
+from httpx import AsyncClient, ASGITransport
 from beanie import init_beanie
 from motor.motor_asyncio import AsyncIOMotorClient
 
@@ -41,7 +41,10 @@ async def init_test_db(db_client):
 @pytest.fixture(scope="function")
 async def client(init_test_db) -> AsyncGenerator[AsyncClient, None]:
     """Create a test client."""
-    async with AsyncClient(app=app, base_url="http://test") as ac:
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://test"
+    ) as ac:
         yield ac
 
 

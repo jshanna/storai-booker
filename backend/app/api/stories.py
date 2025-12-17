@@ -13,6 +13,10 @@ from app.schemas.story import (
     PageResponse,
 )
 from app.tasks.story_generation import generate_story_task
+from app.services.cache import cache_service
+from app.services.content_safety import ContentSafetyService
+from app.services.llm.provider_factory import LLMProviderFactory
+from app.services.sanitizer import sanitizer
 
 router = APIRouter()
 
@@ -26,6 +30,66 @@ async def generate_story(request: StoryCreateRequest):
     The actual generation happens asynchronously via Celery workers (Phase 2).
     """
     try:
+        # Sanitize all user inputs to prevent XSS and injection attacks
+        try:
+            sanitized = sanitizer.sanitize_all_inputs(
+                title=request.title,
+                topic=request.generation_inputs.topic,
+                setting=request.generation_inputs.setting,
+                characters=request.generation_inputs.characters,
+            )
+            # Update request with sanitized values
+            request.title = sanitized['title']
+            request.generation_inputs.topic = sanitized['topic']
+            request.generation_inputs.setting = sanitized['setting']
+            request.generation_inputs.characters = sanitized['characters']
+        except ValueError as e:
+            logger.warning(f"Input sanitization failed: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=str(e),
+            )
+
+        # Validate age against settings
+        from app.models.settings import AppSettings
+        settings = await AppSettings.find_one({"user_id": "default"})
+
+        if settings and settings.age_range.enforce:
+            age = request.generation_inputs.audience_age
+            if age < settings.age_range.min or age > settings.age_range.max:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Audience age {age} is outside allowed range ({settings.age_range.min}-{settings.age_range.max}). "
+                           f"Adjust the age or update settings to allow this age range.",
+                )
+
+        # Check topic appropriateness (fail fast before creating story document)
+        try:
+            llm_provider = LLMProviderFactory.create_from_settings()
+            content_safety = ContentSafetyService(llm_provider)
+            is_appropriate, reason = await content_safety.check_topic_appropriateness(request.generation_inputs)
+
+            if not is_appropriate:
+                logger.warning(f"Topic rejected for age {request.generation_inputs.audience_age}: {reason}")
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=reason,
+                )
+
+            logger.info(f"Topic approved for story '{request.title}': {reason}")
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"Content safety check failed: {e}")
+            # Don't fail the request if safety check errors - let Celery task handle it
+            pass
+
+        # Filter out empty character strings
+        request.generation_inputs.characters = [
+            char.strip() for char in request.generation_inputs.characters
+            if char and char.strip()
+        ]
+
         # Create new storybook document
         storybook = Storybook(
             title=request.title,
@@ -35,6 +99,9 @@ async def generate_story(request: StoryCreateRequest):
 
         await storybook.insert()
         logger.info(f"Created story {storybook.id} - {storybook.title}")
+
+        # Invalidate stories list cache (new story added)
+        cache_service.delete_pattern("stories:list:*")
 
         # Queue generation job with Celery
         task = generate_story_task.delay(str(storybook.id))
@@ -77,6 +144,15 @@ async def list_stories(
     - Text search in title
     """
     try:
+        # Build cache key from query parameters
+        cache_key = f"stories:list:{page}:{page_size}:{format or 'all'}:{status or 'all'}:{search or ''}"
+
+        # Try to get from cache
+        cached = cache_service.get(cache_key)
+        if cached:
+            logger.debug(f"Cache hit for stories list: {cache_key}")
+            return StoryListResponse(**cached)
+
         # Build query filters
         query = {}
         if format:
@@ -94,7 +170,7 @@ async def list_stories(
         skip = (page - 1) * page_size
         stories = await Storybook.find(query).sort("-created_at").skip(skip).limit(page_size).to_list()
 
-        return StoryListResponse(
+        response = StoryListResponse(
             stories=[
                 StoryResponse(
                     id=str(story.id),
@@ -114,6 +190,11 @@ async def list_stories(
             page=page,
             page_size=page_size,
         )
+
+        # Cache the response (TTL: 2 minutes for list endpoints)
+        cache_service.set(cache_key, response.model_dump(), ttl=120)
+
+        return response
     except Exception as e:
         logger.error(f"Failed to list stories: {e}")
         raise HTTPException(
@@ -128,6 +209,15 @@ async def get_story(story_id: str):
     Get a specific story by ID.
     """
     try:
+        # Build cache key
+        cache_key = f"story:{story_id}"
+
+        # Try to get from cache
+        cached = cache_service.get(cache_key)
+        if cached:
+            logger.debug(f"Cache hit for story: {story_id}")
+            return StoryResponse(**cached)
+
         # Validate ObjectId
         try:
             obj_id = PydanticObjectId(story_id)
@@ -145,7 +235,7 @@ async def get_story(story_id: str):
                 detail=f"Story {story_id} not found",
             )
 
-        return StoryResponse(
+        response = StoryResponse(
             id=str(story.id),
             title=story.title,
             created_at=story.created_at,
@@ -157,6 +247,11 @@ async def get_story(story_id: str):
             error_message=story.error_message,
             cover_image_url=story.cover_image_url,
         )
+
+        # Cache the response (TTL: 5 minutes for individual stories)
+        cache_service.set(cache_key, response.model_dump(), ttl=300)
+
+        return response
     except HTTPException:
         raise
     except Exception as e:
@@ -252,6 +347,10 @@ async def delete_story(story_id: str):
 
         await story.delete()
         logger.info(f"Deleted story {story_id}")
+
+        # Invalidate cache for this story and lists
+        cache_service.delete(f"story:{story_id}")
+        cache_service.delete_pattern("stories:list:*")
 
         return None
     except HTTPException:

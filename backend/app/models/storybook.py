@@ -1,15 +1,15 @@
 """Storybook MongoDB document models using Beanie ODM."""
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Optional
 from beanie import Document, Indexed
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from pymongo import IndexModel, DESCENDING
 
 
 class GenerationInputs(BaseModel):
     """User inputs for story generation."""
 
-    audience_age: int = Field(..., ge=3, le=18, description="Target audience age")
+    audience_age: int = Field(..., ge=0, le=100, description="Target audience age")
     audience_gender: Optional[str] = Field(None, description="Target audience gender")
     topic: str = Field(..., min_length=1, max_length=200, description="Story topic")
     setting: str = Field(..., min_length=1, max_length=200, description="Story setting")
@@ -56,8 +56,8 @@ class Storybook(Document):
     """Storybook document model."""
 
     title: Indexed(str) = Field(..., description="Story title")  # type: ignore
-    created_at: Indexed(datetime) = Field(default_factory=datetime.utcnow)  # type: ignore
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: Indexed(datetime) = Field(default_factory=lambda: datetime.now(timezone.utc))  # type: ignore
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     generation_inputs: GenerationInputs
     metadata: StoryMetadata = Field(default_factory=StoryMetadata)
     pages: List[Page] = Field(default_factory=list)
@@ -70,16 +70,22 @@ class Storybook(Document):
 
         name = "storybooks"
         indexes = [
+            # Single field indexes
             IndexModel([("created_at", DESCENDING)]),
             IndexModel([("generation_inputs.format", 1)]),
             IndexModel([("status", 1)]),
             IndexModel([("title", "text")]),  # Text search on title
+            # Compound indexes for common filter combinations
+            IndexModel([("status", 1), ("created_at", DESCENDING)]),
+            IndexModel([("generation_inputs.format", 1), ("created_at", DESCENDING)]),
+            IndexModel([("status", 1), ("generation_inputs.format", 1), ("created_at", DESCENDING)]),
         ]
+        # Configure Beanie to use timezone-aware datetimes
+        use_state_management = True
+        validate_on_save = True
 
-    class Config:
-        """Pydantic config."""
-
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "title": "The Magical Forest Adventure",
                 "generation_inputs": {
@@ -94,3 +100,4 @@ class Storybook(Document):
                 "status": "complete",
             }
         }
+    )

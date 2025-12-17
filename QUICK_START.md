@@ -8,15 +8,20 @@ Get StorAI-Booker running in 5 minutes!
 # 1. Start infrastructure
 docker compose up -d
 
-# 2. Backend (new terminal)
+# 2. Backend API (new terminal)
 cd backend
 cp .env.example .env
-# Optional: Edit .env and add OPENAI_API_KEY, ANTHROPIC_API_KEY, or GOOGLE_API_KEY
+# REQUIRED: Edit .env and add your GOOGLE_API_KEY (get one at https://makersuite.google.com/app/apikey)
 poetry install
 poetry shell
 python main.py
 
-# 3. Frontend (new terminal)
+# 3. Celery Worker (new terminal) - REQUIRED for story generation
+cd backend
+poetry shell
+celery -A app.services.celery_app.celery_app worker --loglevel=info
+
+# 4. Frontend (new terminal)
 cd frontend
 npm install
 npm run dev

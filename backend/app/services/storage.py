@@ -30,6 +30,8 @@ class StorageService:
             region_name=settings.s3_region,
         )
         self.bucket_name = settings.s3_bucket_name
+        self.endpoint_url = settings.s3_endpoint_url
+        self.public_url = settings.s3_public_url
 
     def _get_object_key(self, story_id: str, filename: str) -> str:
         """
@@ -90,8 +92,14 @@ class StorageService:
             expiration: URL expiration in seconds (default: 1 hour)
 
         Returns:
-            Signed URL string
+            Signed URL string or public URL if public_url is configured
         """
+        # If public URL is configured, generate a public URL instead of signed URL
+        if self.public_url:
+            # Generate public URL: /storage/bucket-name/object-key
+            return f"{self.public_url}/{self.bucket_name}/{object_key}"
+
+        # Otherwise generate a signed URL
         try:
             url = self.client.generate_presigned_url(
                 "get_object",

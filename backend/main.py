@@ -1,18 +1,29 @@
 """FastAPI application entry point."""
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 from loguru import logger
 
 from app.core.config import settings
 from app.core.database import db
+from app.core.logging import configure_logging
 from app.middleware.error_handler import (
     http_exception_handler,
     validation_exception_handler,
     general_exception_handler,
 )
+from app.middleware.security import SecurityHeadersMiddleware, RequestSizeLimitMiddleware
+from app.middleware.request_context import RequestContextMiddleware
+
+
+# Configure logging before anything else
+configure_logging()
 
 
 @asynccontextmanager
@@ -32,6 +43,9 @@ async def lifespan(app: FastAPI):
     await db.close_db()
 
 
+# Initialize rate limiter
+limiter = Limiter(key_func=get_remote_address, default_limits=["100/minute"])
+
 # Create FastAPI application
 app = FastAPI(
     title=settings.app_name,
@@ -43,6 +57,13 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# Add rate limiter state to app
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+# Request context middleware (add first to ensure correlation IDs are available)
+app.add_middleware(RequestContextMiddleware)
+
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
@@ -51,6 +72,14 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Configure response compression (GZip)
+# Compresses responses larger than 500 bytes with minimum quality of 5
+app.add_middleware(GZipMiddleware, minimum_size=500, compresslevel=5)
+
+# Security middleware
+app.add_middleware(SecurityHeadersMiddleware)
+app.add_middleware(RequestSizeLimitMiddleware, max_request_size=10 * 1024 * 1024)  # 10 MB
 
 # Register error handlers
 app.add_exception_handler(StarletteHTTPException, http_exception_handler)

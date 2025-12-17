@@ -17,6 +17,8 @@ from app.services.agents.validator import ValidatorAgent
 from app.services.image.provider_factory import ImageProviderFactory
 from app.services.image.base import BaseImageProvider
 from app.services.storage import storage_service
+from app.services.cache import cache_service
+from app.services.content_safety import ContentSafetyService
 import httpx
 
 
@@ -99,6 +101,10 @@ async def _update_story_status(
             story.error_message = error_message
         await story.save()
         logger.info(f"Story {story_id} status updated to: {status}")
+
+        # Invalidate cache when story is updated
+        cache_service.delete(f"story:{story_id}")
+        cache_service.delete_pattern("stories:list:*")
 
 
 async def _download_image_from_url(url: str) -> Optional[bytes]:
@@ -298,6 +304,34 @@ async def _generate_story_workflow(story_id: str, task) -> dict:
     app_settings = await get_app_settings()
     logger.info(f"Using API provider: {app_settings.primary_llm_provider.name}")
 
+    # Step 0: Content Safety Pre-Check
+    logger.info(f"Phase 0: Checking topic appropriateness for age {story.generation_inputs.audience_age}")
+    task.update_state(
+        state="PROGRESS",
+        meta={"phase": "safety_check", "progress": 0.05, "message": "Checking content appropriateness..."}
+    )
+
+    llm_provider = LLMProviderFactory.create_from_settings()
+    image_provider = ImageProviderFactory.create_from_settings()
+
+    # Run topic appropriateness check
+    content_safety = ContentSafetyService(llm_provider)
+    is_appropriate, reason = await content_safety.check_topic_appropriateness(story.generation_inputs)
+
+    if not is_appropriate:
+        logger.error(f"Topic rejected for age {story.generation_inputs.audience_age}: {reason}")
+        story.status = "error"
+        story.error_message = reason
+        await story.save()
+
+        # Invalidate cache
+        cache_service.delete(f"story:{story_id}")
+        cache_service.delete_pattern("stories:list:*")
+
+        raise ValueError(f"Topic not appropriate for target age: {reason}")
+
+    logger.info(f"Topic approved: {reason}")
+
     # Step 1: Story Planning (Coordinator Agent)
     logger.info(f"Phase 1: Story planning for '{story.title}'")
     task.update_state(
@@ -305,8 +339,6 @@ async def _generate_story_workflow(story_id: str, task) -> dict:
         meta={"phase": "planning", "progress": 0.1, "message": "Planning story..."}
     )
 
-    llm_provider = LLMProviderFactory.create_from_settings()
-    image_provider = ImageProviderFactory.create_from_settings()
     coordinator = CoordinatorAgent(llm_provider)
 
     try:
@@ -707,6 +739,10 @@ async def _generate_story_workflow(story_id: str, task) -> dict:
         state="PROGRESS",
         meta={"phase": "complete", "progress": 1.0, "message": "Story generation complete"}
     )
+
+    # Invalidate cache to ensure API returns updated story
+    cache_service.delete(f"story:{story_id}")
+    cache_service.delete_pattern("stories:list:*")
 
     return {
         "status": "success",

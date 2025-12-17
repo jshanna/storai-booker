@@ -18,8 +18,8 @@ interface FormProgressProps {
 
 export function FormProgress({ steps, currentStep }: FormProgressProps) {
   return (
-    <nav aria-label="Progress">
-      <ol className="flex items-center justify-between">
+    <nav aria-label="Progress" className="w-full px-4">
+      <ol className="flex items-center">
         {steps.map((step, stepIdx) => {
           const isComplete = step.id < currentStep;
           const isCurrent = step.id === currentStep;
@@ -28,15 +28,15 @@ export function FormProgress({ steps, currentStep }: FormProgressProps) {
             <li
               key={step.id}
               className={cn(
-                'relative flex flex-col items-center',
-                stepIdx !== steps.length - 1 ? 'flex-1' : ''
+                'relative flex items-center',
+                stepIdx !== steps.length - 1 ? 'flex-1' : 'flex-none'
               )}
             >
               {/* Connector Line */}
               {stepIdx !== steps.length - 1 && (
                 <div
                   className={cn(
-                    'absolute left-1/2 top-5 h-0.5 w-full',
+                    'absolute left-[calc(50%+1.25rem)] top-5 right-0 h-0.5',
                     isComplete ? 'bg-primary' : 'bg-border'
                   )}
                   aria-hidden="true"

@@ -9,6 +9,7 @@ from motor.motor_asyncio import AsyncIOMotorClient
 from main import app
 from app.models.storybook import Storybook
 from app.models.settings import AppSettings
+from app.models.user import User
 
 
 @pytest.fixture(scope="session")
@@ -34,7 +35,7 @@ async def init_test_db(db_client):
     """Initialize Beanie with test database."""
     await init_beanie(
         database=db_client["test_storai_booker"],
-        document_models=[Storybook, AppSettings],
+        document_models=[Storybook, AppSettings, User],
     )
 
 

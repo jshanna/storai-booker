@@ -81,6 +81,31 @@ class Settings(BaseSettings):
     log_level: str = Field(default="INFO", alias="LOG_LEVEL")
     log_format: str = Field(default="json", alias="LOG_FORMAT")
 
+    # JWT Settings
+    jwt_secret_key: str = Field(
+        default="jwt-secret-key-change-in-production",
+        alias="JWT_SECRET_KEY",
+        description="Secret key for signing JWT tokens"
+    )
+    jwt_algorithm: str = Field(default="HS256", alias="JWT_ALGORITHM")
+    jwt_access_token_expire_minutes: int = Field(
+        default=60, alias="JWT_ACCESS_TOKEN_EXPIRE_MINUTES"
+    )
+    jwt_refresh_token_expire_days: int = Field(
+        default=7, alias="JWT_REFRESH_TOKEN_EXPIRE_DAYS"
+    )
+
+    # OAuth Settings
+    google_client_id: str = Field(default="", alias="GOOGLE_CLIENT_ID")
+    google_client_secret: str = Field(default="", alias="GOOGLE_CLIENT_SECRET")
+    github_client_id: str = Field(default="", alias="GITHUB_CLIENT_ID")
+    github_client_secret: str = Field(default="", alias="GITHUB_CLIENT_SECRET")
+    oauth_redirect_url: str = Field(
+        default="http://localhost:5173/auth/callback",
+        alias="OAUTH_REDIRECT_URL",
+        description="Frontend URL for OAuth callbacks"
+    )
+
     @property
     def is_development(self) -> bool:
         """Check if running in development mode."""

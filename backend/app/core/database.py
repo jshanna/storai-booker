@@ -23,13 +23,13 @@ class Database:
             logger.info(f"Connected to MongoDB at {settings.mongodb_url}")
 
             # Initialize Beanie with document models
-            # Models will be imported here once created
             from app.models.storybook import Storybook
             from app.models.settings import AppSettings
+            from app.models.user import User
 
             await init_beanie(
                 database=cls.client[cls.db_name],
-                document_models=[Storybook, AppSettings],
+                document_models=[Storybook, AppSettings, User],
             )
             logger.info("Beanie ODM initialized successfully")
 

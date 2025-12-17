@@ -144,7 +144,9 @@ async def root():
 # Include API routers
 from app.api import stories
 from app.api import settings as settings_router
+from app.api import auth
 
+app.include_router(auth.router, prefix="/api/auth", tags=["authentication"])
 app.include_router(stories.router, prefix="/api/stories", tags=["stories"])
 app.include_router(settings_router.router, prefix="/api/settings", tags=["settings"])
 

@@ -12,12 +12,18 @@ from loguru import logger
 
 from app.core.config import settings
 from app.core.database import db
+from app.core.logging import configure_logging
 from app.middleware.error_handler import (
     http_exception_handler,
     validation_exception_handler,
     general_exception_handler,
 )
 from app.middleware.security import SecurityHeadersMiddleware, RequestSizeLimitMiddleware
+from app.middleware.request_context import RequestContextMiddleware
+
+
+# Configure logging before anything else
+configure_logging()
 
 
 @asynccontextmanager
@@ -54,6 +60,9 @@ app = FastAPI(
 # Add rate limiter state to app
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+# Request context middleware (add first to ensure correlation IDs are available)
+app.add_middleware(RequestContextMiddleware)
 
 # Configure CORS
 app.add_middleware(

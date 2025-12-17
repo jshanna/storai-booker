@@ -12,16 +12,24 @@ async def http_exception_handler(request: Request, exc: StarletteHTTPException):
 
     Returns structured error responses for HTTP exceptions.
     """
+    # Get correlation ID from request state if available
+    correlation_id = getattr(request.state, "correlation_id", None)
+
+    error_response = {
+        "error": {
+            "type": "http_error",
+            "status_code": exc.status_code,
+            "message": exc.detail,
+            "path": str(request.url.path),
+        }
+    }
+
+    if correlation_id:
+        error_response["error"]["correlation_id"] = correlation_id
+
     return JSONResponse(
         status_code=exc.status_code,
-        content={
-            "error": {
-                "type": "http_error",
-                "status_code": exc.status_code,
-                "message": exc.detail,
-                "path": str(request.url.path),
-            }
-        },
+        content=error_response,
     )
 
 
@@ -31,6 +39,9 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 
     Returns structured error responses for validation failures.
     """
+    # Get correlation ID from request state if available
+    correlation_id = getattr(request.state, "correlation_id", None)
+
     errors = []
     for error in exc.errors():
         errors.append({
@@ -39,19 +50,29 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
             "type": error["type"],
         })
 
-    logger.warning(f"Validation error on {request.url.path}: {errors}")
+    # Log with correlation ID if available
+    log_context = {"path": request.url.path, "errors": errors}
+    if correlation_id:
+        log_context["correlation_id"] = correlation_id
+
+    logger.warning(f"Validation error on {request.url.path}", **log_context)
+
+    error_response = {
+        "error": {
+            "type": "validation_error",
+            "status_code": status.HTTP_422_UNPROCESSABLE_ENTITY,
+            "message": "Request validation failed",
+            "details": errors,
+            "path": str(request.url.path),
+        }
+    }
+
+    if correlation_id:
+        error_response["error"]["correlation_id"] = correlation_id
 
     return JSONResponse(
         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-        content={
-            "error": {
-                "type": "validation_error",
-                "status_code": status.HTTP_422_UNPROCESSABLE_ENTITY,
-                "message": "Request validation failed",
-                "details": errors,
-                "path": str(request.url.path),
-            }
-        },
+        content=error_response,
     )
 
 
@@ -61,16 +82,29 @@ async def general_exception_handler(request: Request, exc: Exception):
 
     Logs the error and returns a generic error response.
     """
-    logger.error(f"Unexpected error on {request.url.path}: {exc}", exc_info=True)
+    # Get correlation ID from request state if available
+    correlation_id = getattr(request.state, "correlation_id", None)
+
+    # Log with correlation ID if available
+    log_context = {"path": request.url.path, "error": str(exc)}
+    if correlation_id:
+        log_context["correlation_id"] = correlation_id
+
+    logger.error(f"Unexpected error on {request.url.path}: {exc}", **log_context, exc_info=True)
+
+    error_response = {
+        "error": {
+            "type": "internal_error",
+            "status_code": status.HTTP_500_INTERNAL_SERVER_ERROR,
+            "message": "An unexpected error occurred",
+            "path": str(request.url.path),
+        }
+    }
+
+    if correlation_id:
+        error_response["error"]["correlation_id"] = correlation_id
 
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        content={
-            "error": {
-                "type": "internal_error",
-                "status_code": status.HTTP_500_INTERNAL_SERVER_ERROR,
-                "message": "An unexpected error occurred",
-                "path": str(request.url.path),
-            }
-        },
+        content=error_response,
     )

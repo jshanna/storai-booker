@@ -740,6 +740,10 @@ async def _generate_story_workflow(story_id: str, task) -> dict:
         meta={"phase": "complete", "progress": 1.0, "message": "Story generation complete"}
     )
 
+    # Invalidate cache to ensure API returns updated story
+    cache_service.delete(f"story:{story_id}")
+    cache_service.delete_pattern("stories:list:*")
+
     return {
         "status": "success",
         "story_id": str(story.id),

@@ -2,6 +2,7 @@
  * Step 3: Characters (dynamic add/remove list).
  */
 
+import { useEffect } from 'react';
 import { UseFormReturn, useFieldArray } from 'react-hook-form';
 import { Plus, Trash2 } from 'lucide-react';
 import {
@@ -25,6 +26,13 @@ export function CharactersStep({ form }: CharactersStepProps) {
     name: 'characters' as never,
   });
 
+  // Auto-add first character field on mount if none exist
+  useEffect(() => {
+    if (fields.length === 0) {
+      append('' as never);
+    }
+  }, []); // Empty dependency array - only run on mount
+
   const handleAddCharacter = () => {
     if (fields.length < 10) {
       append('' as never);
@@ -36,12 +44,23 @@ export function CharactersStep({ form }: CharactersStepProps) {
       <div>
         <h3 className="text-lg font-medium">Characters</h3>
         <p className="text-sm text-muted-foreground">
-          Add the main characters for your story (1-10 characters)
+          Add characters for your story (optional, up to 10). Leave blank to let AI create characters.
         </p>
       </div>
 
-      <div className="space-y-4">
-        {fields.map((field, index) => (
+      {fields.length === 0 ? (
+        <div className="text-center py-8 border-2 border-dashed rounded-lg">
+          <p className="text-sm text-muted-foreground mb-4">
+            No characters added yet. Click below to add characters, or skip this step to let the AI create them.
+          </p>
+          <Button type="button" variant="outline" onClick={handleAddCharacter}>
+            <Plus className="mr-2 h-4 w-4" />
+            Add First Character
+          </Button>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {fields.map((field, index) => (
           <FormField
             key={field.id}
             control={form.control}
@@ -71,22 +90,23 @@ export function CharactersStep({ form }: CharactersStepProps) {
             )}
           />
         ))}
-      </div>
 
-      <Button
-        type="button"
-        variant="outline"
-        onClick={handleAddCharacter}
-        disabled={fields.length >= 10}
-        className="w-full"
-      >
-        <Plus className="mr-2 h-4 w-4" />
-        Add Character
-      </Button>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleAddCharacter}
+            disabled={fields.length >= 10}
+            className="w-full"
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            Add Character
+          </Button>
 
-      <p className="text-sm text-muted-foreground">
-        You have {fields.length} of 10 characters
-      </p>
+          <p className="text-sm text-muted-foreground">
+            You have {fields.length} of 10 characters
+          </p>
+        </div>
+      )}
     </div>
   );
 }

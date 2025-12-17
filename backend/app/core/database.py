@@ -17,7 +17,7 @@ class Database:
     async def connect_db(cls) -> None:
         """Create database connection and initialize Beanie ODM."""
         try:
-            cls.client = AsyncIOMotorClient(settings.mongodb_url)
+            cls.client = AsyncIOMotorClient(settings.mongodb_url, tz_aware=True)
             # Test connection
             await cls.client.admin.command("ping")
             logger.info(f"Connected to MongoDB at {settings.mongodb_url}")

@@ -55,7 +55,7 @@ export function GenerationForm() {
       setting: '',
       format: 'storybook',
       illustration_style: 'watercolor',
-      characters: [''],
+      characters: [],
       page_count: 10,
       panels_per_page: null,
     },
@@ -88,20 +88,29 @@ export function GenerationForm() {
     return result;
   };
 
-  const handleNext = async () => {
+  const handleNext = async (e?: React.MouseEvent<HTMLButtonElement>) => {
+    e?.preventDefault();
     const isValid = await validateCurrentStep();
     if (isValid && currentStep < STEPS.length) {
       setCurrentStep(currentStep + 1);
     }
   };
 
-  const handlePrevious = () => {
+  const handlePrevious = (e?: React.MouseEvent<HTMLButtonElement>) => {
+    e?.preventDefault();
     if (currentStep > 1) {
       setCurrentStep(currentStep - 1);
     }
   };
 
-  const onSubmit = (data: StoryGenerationFormData) => {
+  const onSubmit = async (data: StoryGenerationFormData) => {
+    // Prevent submission if not on the last step
+    if (currentStep !== STEPS.length) {
+      console.warn(`Form submitted on step ${currentStep} but should be on step ${STEPS.length}. Advancing to next step instead.`);
+      await handleNext();
+      return;
+    }
+
     // Transform form data to match backend API format
     const requestData = {
       title: data.topic.substring(0, 100), // Use topic as title, truncate to 100 chars
@@ -155,7 +164,16 @@ export function GenerationForm() {
 
         {/* Form */}
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+          <form
+            onSubmit={form.handleSubmit(onSubmit)}
+            onKeyDown={(e) => {
+              // Prevent Enter key from submitting form unless on last step
+              if (e.key === 'Enter' && currentStep !== STEPS.length) {
+                e.preventDefault();
+              }
+            }}
+            className="space-y-8"
+          >
             {/* Current Step */}
             {renderStep()}
 

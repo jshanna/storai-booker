@@ -1,11 +1,21 @@
 """Redis cache service for API response caching."""
 import json
+from datetime import datetime
 from typing import Any, Optional
 from redis import Redis
 from redis.exceptions import RedisError
 from loguru import logger
 
 from app.core.config import settings
+
+
+class DateTimeEncoder(json.JSONEncoder):
+    """Custom JSON encoder that handles datetime objects."""
+
+    def default(self, obj):
+        if isinstance(obj, datetime):
+            return obj.isoformat()
+        return super().default(obj)
 
 
 class CacheService:
@@ -66,7 +76,7 @@ class CacheService:
             return False
 
         try:
-            serialized = json.dumps(value)
+            serialized = json.dumps(value, cls=DateTimeEncoder)
             self.redis.setex(key, ttl, serialized)
             return True
         except (RedisError, TypeError) as e:

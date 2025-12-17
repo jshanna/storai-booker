@@ -49,11 +49,9 @@ export const createStoryGenerationSchema = (minAge: number = 3, maxAge: number =
     .max(100, 'Illustration style must be at most 100 characters'),
 
   characters: z
-    .array(
-      z.string().min(1, 'Character name cannot be empty').max(100, 'Character name must be at most 100 characters')
-    )
-    .min(1, 'At least one character is required')
-    .max(10, 'Maximum 10 characters allowed'),
+    .array(z.string().max(100, 'Character name must be at most 100 characters'))
+    .max(10, 'Maximum 10 characters allowed')
+    .default([]),
 
   page_count: z
     .number({

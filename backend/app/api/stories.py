@@ -14,6 +14,8 @@ from app.schemas.story import (
 )
 from app.tasks.story_generation import generate_story_task
 from app.services.cache import cache_service
+from app.services.content_safety import ContentSafetyService
+from app.services.llm.provider_factory import LLMProviderFactory
 
 router = APIRouter()
 
@@ -39,6 +41,33 @@ async def generate_story(request: StoryCreateRequest):
                     detail=f"Audience age {age} is outside allowed range ({settings.age_range.min}-{settings.age_range.max}). "
                            f"Adjust the age or update settings to allow this age range.",
                 )
+
+        # Check topic appropriateness (fail fast before creating story document)
+        try:
+            llm_provider = LLMProviderFactory.create_from_settings()
+            content_safety = ContentSafetyService(llm_provider)
+            is_appropriate, reason = await content_safety.check_topic_appropriateness(request.generation_inputs)
+
+            if not is_appropriate:
+                logger.warning(f"Topic rejected for age {request.generation_inputs.audience_age}: {reason}")
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=reason,
+                )
+
+            logger.info(f"Topic approved for story '{request.title}': {reason}")
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"Content safety check failed: {e}")
+            # Don't fail the request if safety check errors - let Celery task handle it
+            pass
+
+        # Filter out empty character strings
+        request.generation_inputs.characters = [
+            char.strip() for char in request.generation_inputs.characters
+            if char and char.strip()
+        ]
 
         # Create new storybook document
         storybook = Storybook(

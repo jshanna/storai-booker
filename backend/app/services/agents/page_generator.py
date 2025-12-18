@@ -40,6 +40,53 @@ POSITION_ALIASES = {
     "bottomright": "bottom-right",
 }
 
+# Valid sound effect style values
+VALID_STYLES = {"impact", "whoosh", "ambient", "dramatic"}
+
+# Map common LLM style mistakes to valid values
+STYLE_ALIASES = {
+    # Impact variations
+    "shout": "impact",
+    "loud": "impact",
+    "bang": "impact",
+    "crash": "impact",
+    "boom": "impact",
+    "pow": "impact",
+    "hit": "impact",
+    "slam": "impact",
+    "punch": "impact",
+    "explosion": "impact",
+    "burst": "impact",
+    # Whoosh variations
+    "swish": "whoosh",
+    "swoosh": "whoosh",
+    "zoom": "whoosh",
+    "fast": "whoosh",
+    "speed": "whoosh",
+    "rush": "whoosh",
+    "wind": "whoosh",
+    "fly": "whoosh",
+    "motion": "whoosh",
+    # Ambient variations
+    "soft": "ambient",
+    "quiet": "ambient",
+    "subtle": "ambient",
+    "background": "ambient",
+    "gentle": "ambient",
+    "calm": "ambient",
+    "whisper": "ambient",
+    "nature": "ambient",
+    # Dramatic variations
+    "big": "dramatic",
+    "large": "dramatic",
+    "bold": "dramatic",
+    "intense": "dramatic",
+    "epic": "dramatic",
+    "powerful": "dramatic",
+    "strong": "dramatic",
+    "exclamation": "dramatic",
+}
+
 
 def normalize_position(position: str) -> str:
     """Normalize a position string to a valid panel position value."""
@@ -51,6 +98,18 @@ def normalize_position(position: str) -> str:
     # Default fallback
     logger.warning(f"Unknown position '{position}', defaulting to 'middle-center'")
     return "middle-center"
+
+
+def normalize_style(style: str) -> str:
+    """Normalize a sound effect style to a valid value."""
+    s = style.lower().strip()
+    if s in VALID_STYLES:
+        return s
+    if s in STYLE_ALIASES:
+        return STYLE_ALIASES[s]
+    # Default fallback
+    logger.warning(f"Unknown sound effect style '{style}', defaulting to 'impact'")
+    return "impact"
 
 
 class PageGeneratorAgent:
@@ -191,12 +250,12 @@ class PageGeneratorAgent:
                     for d in panel_out.dialogue
                 ]
 
-                # Convert sound effects (normalize positions)
+                # Convert sound effects (normalize positions and styles)
                 sound_effects = [
                     SoundEffect(
                         text=s.text,
                         position=normalize_position(s.position),
-                        style=s.style,
+                        style=normalize_style(s.style),
                     )
                     for s in panel_out.sound_effects
                 ]
@@ -376,12 +435,12 @@ Please correct these issues in your new generation."""
                     for d in panel_out.dialogue
                 ]
 
-                # Convert sound effects (normalize positions)
+                # Convert sound effects (normalize positions and styles)
                 sound_effects = [
                     SoundEffect(
                         text=s.text,
                         position=normalize_position(s.position),
-                        style=s.style,
+                        style=normalize_style(s.style),
                     )
                     for s in panel_out.sound_effects
                 ]

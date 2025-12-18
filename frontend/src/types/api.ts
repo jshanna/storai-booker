@@ -171,6 +171,51 @@ export interface HealthResponse {
 }
 
 // ============================================================================
+// Template Types
+// ============================================================================
+
+export interface TemplateGenerationInputs {
+  audience_age: number;
+  audience_gender?: string | null;
+  topic: string;
+  setting: string;
+  format: 'storybook' | 'comic';
+  illustration_style: string;
+  characters: string[];
+  page_count: number;
+  panels_per_page?: number | null;
+}
+
+export interface Template {
+  id: string;
+  name: string;
+  description: string;
+  generation_inputs: TemplateGenerationInputs;
+  age_range_min: number;
+  age_range_max: number;
+  category: string;
+  tags: string[];
+  icon?: string | null;
+  cover_image_url?: string | null;
+}
+
+export interface TemplateListParams {
+  category?: string;
+  min_age?: number;
+  max_age?: number;
+  search?: string;
+}
+
+export interface TemplateListResponse {
+  templates: Template[];
+  total: number;
+}
+
+export interface TemplateCategoriesResponse {
+  categories: string[];
+}
+
+// ============================================================================
 // Error Types
 // ============================================================================
 

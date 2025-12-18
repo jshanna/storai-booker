@@ -27,7 +27,14 @@ const STEPS: Step[] = [
   { id: 4, name: 'Style', description: 'Illustration style' },
 ];
 
-export function GenerationForm() {
+interface GenerationFormProps {
+  /** Initial values to pre-fill the form (e.g., from a template) */
+  initialValues?: Partial<StoryGenerationFormData>;
+  /** Callback when user wants to go back to template selection */
+  onBack?: () => void;
+}
+
+export function GenerationForm({ initialValues, onBack }: GenerationFormProps) {
   const [currentStep, setCurrentStep] = useState(1);
   const navigate = useNavigate();
   const { mutate: createStory, isPending } = useCreateStory();
@@ -50,15 +57,15 @@ export function GenerationForm() {
   const form = useForm<StoryGenerationFormData>({
     resolver: zodResolver(schema),
     defaultValues: {
-      audience_age: defaultAge,
-      audience_gender: null,
-      topic: '',
-      setting: '',
-      format: 'storybook',
-      illustration_style: 'watercolor',
-      characters: [],
-      page_count: 10,
-      panels_per_page: null,
+      audience_age: initialValues?.audience_age ?? defaultAge,
+      audience_gender: initialValues?.audience_gender ?? null,
+      topic: initialValues?.topic ?? '',
+      setting: initialValues?.setting ?? '',
+      format: initialValues?.format ?? 'storybook',
+      illustration_style: initialValues?.illustration_style ?? 'watercolor',
+      characters: initialValues?.characters ?? [],
+      page_count: initialValues?.page_count ?? 10,
+      panels_per_page: initialValues?.panels_per_page ?? null,
     },
   });
 
@@ -200,15 +207,28 @@ export function GenerationForm() {
 
             {/* Navigation Buttons */}
             <div className="flex justify-between pt-6 border-t">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handlePrevious}
-                disabled={currentStep === 1 || isPending}
-              >
-                <ChevronLeft className="mr-2 h-4 w-4" />
-                Previous
-              </Button>
+              <div className="flex gap-2">
+                {onBack && currentStep === 1 && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={onBack}
+                    disabled={isPending}
+                  >
+                    <ChevronLeft className="mr-2 h-4 w-4" />
+                    Templates
+                  </Button>
+                )}
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handlePrevious}
+                  disabled={currentStep === 1 || isPending}
+                >
+                  <ChevronLeft className="mr-2 h-4 w-4" />
+                  Previous
+                </Button>
+              </div>
 
               {currentStep < STEPS.length ? (
                 <Button type="button" onClick={handleNext} disabled={isPending}>

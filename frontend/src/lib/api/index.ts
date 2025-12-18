@@ -7,3 +7,4 @@ export { storiesApi } from './stories';
 export { settingsApi } from './settings';
 export { authApi } from './auth';
 export { exportsApi } from './exports';
+export { templatesApi } from './templates';

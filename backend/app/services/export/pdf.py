@@ -154,7 +154,7 @@ class PDFExporter(BaseExporter):
         # Story pages
         for page in story.pages:
             if is_comic and page.panels:
-                # Comic format: render panel grid
+                # Comic format: render panel grid with page number included
                 panel_images = []
                 for panel in page.panels:
                     if panel.illustration_url:
@@ -163,8 +163,9 @@ class PDFExporter(BaseExporter):
                             panel_images.append(img_data)
 
                 if panel_images:
-                    # Create grid layout based on panel count
-                    await self._add_comic_page(elements, panel_images, page.page_number)
+                    # Create grid layout with page number embedded
+                    await self._add_comic_page(elements, panel_images, page.page_number, page_number_style)
+                elements.append(PageBreak())
             else:
                 # Storybook format: single illustration + text
                 if page.illustration_url:
@@ -179,11 +180,10 @@ class PDFExporter(BaseExporter):
                 if page.text:
                     elements.append(Paragraph(page.text, body_style))
 
-            # Page number
-            elements.append(Spacer(1, 0.5 * inch))
-            elements.append(Paragraph(f"- {page.page_number} -", page_number_style))
-
-            elements.append(PageBreak())
+                # Page number (only for storybook format)
+                elements.append(Spacer(1, 0.5 * inch))
+                elements.append(Paragraph(f"- {page.page_number} -", page_number_style))
+                elements.append(PageBreak())
 
         # End page
         elements.append(Spacer(1, 3 * inch))
@@ -196,6 +196,7 @@ class PDFExporter(BaseExporter):
         elements: list,
         panel_images: list,
         page_number: int,
+        page_number_style,
     ) -> None:
         """
         Add a comic page with panel grid layout that fills the page.
@@ -203,7 +204,8 @@ class PDFExporter(BaseExporter):
         Args:
             elements: List of ReportLab elements to append to
             panel_images: List of panel image bytes
-            page_number: Page number for alt text
+            page_number: Page number
+            page_number_style: Style for page number text
         """
         panel_count = len(panel_images)
 
@@ -219,12 +221,12 @@ class PDFExporter(BaseExporter):
         else:
             cols, rows = 3, 3
 
-        # Calculate available space - use almost full page
+        # Calculate available space - leave room for page number
         page_width = self.page_size[0] - 2 * self.margin
-        page_height = self.page_size[1] - 2 * self.margin - 0.5 * inch  # Small margin for page number
+        page_height = self.page_size[1] - 2 * self.margin - 0.4 * inch  # Space for page number
 
         # Gap between panels
-        gap = 0.08 * inch
+        gap = 0.06 * inch
 
         # Calculate cell dimensions to fill the space
         total_gap_width = (cols - 1) * gap
@@ -233,9 +235,9 @@ class PDFExporter(BaseExporter):
         cell_height = (page_height - total_gap_height) / rows
 
         # Padding inside each cell
-        cell_padding = 2
+        cell_padding = 3
 
-        # Create table data with images - force exact cell dimensions
+        # Create table data with images - scale to fit (no cropping)
         table_data = []
         img_index = 0
 
@@ -247,6 +249,7 @@ class PDFExporter(BaseExporter):
                         panel_images[img_index],
                         target_width=cell_width - 2 * cell_padding,
                         target_height=cell_height - 2 * cell_padding,
+                        crop=False,  # Scale to fit, don't crop
                     )
                     row_data.append(img if img else "")
                     img_index += 1
@@ -274,20 +277,24 @@ class PDFExporter(BaseExporter):
         ]))
 
         elements.append(table)
+        # Add page number directly after table (no spacer to avoid overflow)
+        elements.append(Paragraph(f"- {page_number} -", page_number_style))
 
     async def _create_panel_image(
         self,
         img_data: bytes,
         target_width: float,
         target_height: float,
+        crop: bool = False,
     ) -> Optional[RLImage]:
         """
-        Create a panel image that fills exact dimensions (crop to fit).
+        Create a panel image scaled to fit within target dimensions.
 
         Args:
             img_data: Image bytes
-            target_width: Exact width to fill
-            target_height: Exact height to fill
+            target_width: Maximum width
+            target_height: Maximum height
+            crop: If True, crop to fill exact dimensions. If False, scale to fit.
 
         Returns:
             ReportLab Image or None
@@ -298,38 +305,47 @@ class PDFExporter(BaseExporter):
             # Open image
             img_buffer = io.BytesIO(img_data)
             pil_img = PILImage.open(img_buffer)
+            orig_width, orig_height = pil_img.size
 
             # Calculate target pixel dimensions (150 DPI)
             target_width_px = int(target_width / inch * 150)
             target_height_px = int(target_height / inch * 150)
 
-            # Calculate crop to fill (cover) the target area
-            orig_width, orig_height = pil_img.size
-            orig_ratio = orig_width / orig_height
-            target_ratio = target_width_px / target_height_px
+            if crop:
+                # Crop to fill (cover) the target area
+                orig_ratio = orig_width / orig_height
+                target_ratio = target_width_px / target_height_px
 
-            if orig_ratio > target_ratio:
-                # Image is wider - crop sides
-                new_height = orig_height
-                new_width = int(orig_height * target_ratio)
-                left = (orig_width - new_width) // 2
-                top = 0
-                right = left + new_width
-                bottom = orig_height
+                if orig_ratio > target_ratio:
+                    # Image is wider - crop sides
+                    new_width = int(orig_height * target_ratio)
+                    left = (orig_width - new_width) // 2
+                    pil_img = pil_img.crop((left, 0, left + new_width, orig_height))
+                else:
+                    # Image is taller - crop top/bottom
+                    new_height = int(orig_width / target_ratio)
+                    top = (orig_height - new_height) // 2
+                    pil_img = pil_img.crop((0, top, orig_width, top + new_height))
+
+                # Resize to exact target dimensions
+                pil_img = pil_img.resize((target_width_px, target_height_px), PILImage.Resampling.LANCZOS)
+                final_width = target_width
+                final_height = target_height
             else:
-                # Image is taller - crop top/bottom
-                new_width = orig_width
-                new_height = int(orig_width / target_ratio)
-                left = 0
-                top = (orig_height - new_height) // 2
-                right = orig_width
-                bottom = top + new_height
+                # Scale to fit (contain) - preserve aspect ratio
+                width_ratio = target_width_px / orig_width
+                height_ratio = target_height_px / orig_height
+                scale = min(width_ratio, height_ratio)
 
-            # Crop to aspect ratio
-            pil_img = pil_img.crop((left, top, right, bottom))
+                new_width_px = int(orig_width * scale)
+                new_height_px = int(orig_height * scale)
 
-            # Resize to target dimensions
-            pil_img = pil_img.resize((target_width_px, target_height_px), PILImage.Resampling.LANCZOS)
+                if scale < 1.0:
+                    pil_img = pil_img.resize((new_width_px, new_height_px), PILImage.Resampling.LANCZOS)
+
+                # Calculate display dimensions
+                final_width = new_width_px / 150 * inch
+                final_height = new_height_px / 150 * inch
 
             # Convert to RGB if necessary
             if pil_img.mode in ('RGBA', 'LA', 'P'):
@@ -347,8 +363,8 @@ class PDFExporter(BaseExporter):
             pil_img.save(compressed_buffer, format='JPEG', quality=80, optimize=True)
             compressed_buffer.seek(0)
 
-            # Create ReportLab image with exact dimensions
-            rl_img = RLImage(compressed_buffer, width=target_width, height=target_height)
+            # Create ReportLab image
+            rl_img = RLImage(compressed_buffer, width=final_width, height=final_height)
             rl_img.hAlign = "CENTER"
 
             return rl_img

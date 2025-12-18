@@ -27,7 +27,7 @@ class DialogueEntry(BaseModel):
     text: str = Field(..., description="Dialogue text")
     position: str = Field(
         default="top-left",
-        pattern="^(top-left|top-center|top-right|middle-left|middle-right|bottom-left|bottom-center|bottom-right)$",
+        pattern="^(top-left|top-center|top-right|middle-left|middle-center|middle-right|bottom-left|bottom-center|bottom-right)$",
         description="Position of speech bubble in panel"
     )
     style: str = Field(

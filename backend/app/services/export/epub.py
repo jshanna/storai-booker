@@ -81,6 +81,24 @@ class EPUBExporter(BaseExporter):
             font-size: 2em;
             margin-top: 3em;
         }
+        .comic-grid {
+            display: grid;
+            gap: 4px;
+            margin: 0.5em;
+        }
+        .comic-grid-2x1 { grid-template-columns: 1fr 1fr; }
+        .comic-grid-2x2 { grid-template-columns: 1fr 1fr; }
+        .comic-grid-3x2 { grid-template-columns: 1fr 1fr 1fr; }
+        .comic-grid-3x3 { grid-template-columns: 1fr 1fr 1fr; }
+        .panel {
+            border: 1px solid #333;
+            overflow: hidden;
+        }
+        .panel img {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
         """
 
         css = epub.EpubItem(
@@ -123,6 +141,9 @@ class EPUBExporter(BaseExporter):
         book.add_item(title_chapter)
         chapters.append(title_chapter)
 
+        # Determine if comic format
+        is_comic = story.generation_inputs.format == "comic"
+
         # Story pages
         for page in story.pages:
             page_chapter = epub.EpubHtml(
@@ -134,17 +155,34 @@ class EPUBExporter(BaseExporter):
             # Build page content
             content_parts = ['<html><head><link rel="stylesheet" href="style/main.css"/></head><body><div class="page">']
 
-            # Add image if available
-            if page.illustration_url:
-                img_data = await self.download_image(page.illustration_url)
-                if img_data:
-                    img_filename = f"images/page_{page.page_number:02d}.png"
-                    images.append((img_filename, img_data))
-                    content_parts.append(f'<div class="page-image"><img src="{img_filename}" alt="Page {page.page_number}"/></div>')
+            if is_comic and page.panels:
+                # Comic format: render panel grid
+                panel_count = len(page.panels)
+                grid_class = self._get_grid_class(panel_count)
 
-            # Add text
-            if page.text:
-                content_parts.append(f'<div class="page-text">{self._escape_html(page.text)}</div>')
+                content_parts.append(f'<div class="comic-grid {grid_class}">')
+
+                for panel in page.panels:
+                    if panel.illustration_url:
+                        img_data = await self.download_image(panel.illustration_url)
+                        if img_data:
+                            img_filename = f"images/page_{page.page_number:02d}_panel_{panel.panel_number:02d}.png"
+                            images.append((img_filename, img_data))
+                            content_parts.append(f'<div class="panel"><img src="{img_filename}" alt="Page {page.page_number}, Panel {panel.panel_number}"/></div>')
+
+                content_parts.append('</div>')
+            else:
+                # Storybook format: single image + text
+                if page.illustration_url:
+                    img_data = await self.download_image(page.illustration_url)
+                    if img_data:
+                        img_filename = f"images/page_{page.page_number:02d}.png"
+                        images.append((img_filename, img_data))
+                        content_parts.append(f'<div class="page-image"><img src="{img_filename}" alt="Page {page.page_number}"/></div>')
+
+                # Add text
+                if page.text:
+                    content_parts.append(f'<div class="page-text">{self._escape_html(page.text)}</div>')
 
             # Page number
             content_parts.append(f'<div class="page-number">- {page.page_number} -</div>')
@@ -220,3 +258,14 @@ class EPUBExporter(BaseExporter):
             .replace(">", "&gt;")
             .replace('"', "&quot;")
         )
+
+    def _get_grid_class(self, panel_count: int) -> str:
+        """Get CSS grid class based on panel count."""
+        if panel_count <= 2:
+            return "comic-grid-2x1"
+        elif panel_count <= 4:
+            return "comic-grid-2x2"
+        elif panel_count <= 6:
+            return "comic-grid-3x2"
+        else:
+            return "comic-grid-3x3"

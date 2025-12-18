@@ -148,20 +148,36 @@ class PDFExporter(BaseExporter):
 
         elements.append(PageBreak())
 
+        # Determine if comic format
+        is_comic = story.generation_inputs.format == "comic"
+
         # Story pages
         for page in story.pages:
-            # Page illustration
-            if page.illustration_url:
-                img_data = await self.download_image(page.illustration_url)
-                if img_data:
-                    img = await self._create_image(img_data, max_width=6*inch, max_height=5*inch)
-                    if img:
-                        elements.append(img)
-                        elements.append(Spacer(1, 0.3 * inch))
+            if is_comic and page.panels:
+                # Comic format: render panel grid
+                panel_images = []
+                for panel in page.panels:
+                    if panel.illustration_url:
+                        img_data = await self.download_image(panel.illustration_url)
+                        if img_data:
+                            panel_images.append(img_data)
 
-            # Page text
-            if page.text:
-                elements.append(Paragraph(page.text, body_style))
+                if panel_images:
+                    # Create grid layout based on panel count
+                    await self._add_comic_page(elements, panel_images, page.page_number)
+            else:
+                # Storybook format: single illustration + text
+                if page.illustration_url:
+                    img_data = await self.download_image(page.illustration_url)
+                    if img_data:
+                        img = await self._create_image(img_data, max_width=6*inch, max_height=5*inch)
+                        if img:
+                            elements.append(img)
+                            elements.append(Spacer(1, 0.3 * inch))
+
+                # Page text
+                if page.text:
+                    elements.append(Paragraph(page.text, body_style))
 
             # Page number
             elements.append(Spacer(1, 0.5 * inch))
@@ -174,6 +190,80 @@ class PDFExporter(BaseExporter):
         elements.append(Paragraph("The End", title_style))
 
         return elements
+
+    async def _add_comic_page(
+        self,
+        elements: list,
+        panel_images: list,
+        page_number: int,
+    ) -> None:
+        """
+        Add a comic page with panel grid layout.
+
+        Args:
+            elements: List of ReportLab elements to append to
+            panel_images: List of panel image bytes
+            page_number: Page number for alt text
+        """
+        panel_count = len(panel_images)
+
+        # Calculate grid dimensions
+        if panel_count == 1:
+            cols, rows = 1, 1
+        elif panel_count == 2:
+            cols, rows = 2, 1
+        elif panel_count <= 4:
+            cols, rows = 2, 2
+        elif panel_count <= 6:
+            cols, rows = 3, 2
+        else:
+            cols, rows = 3, 3
+
+        # Calculate cell size based on available space
+        page_width = self.page_size[0] - 2 * self.margin
+        page_height = self.page_size[1] - 2 * self.margin - 1.5 * inch  # Leave room for page number
+
+        cell_width = (page_width - (cols - 1) * 0.1 * inch) / cols
+        cell_height = (page_height - (rows - 1) * 0.1 * inch) / rows
+
+        # Create table data with images
+        table_data = []
+        img_index = 0
+
+        for row in range(rows):
+            row_data = []
+            for col in range(cols):
+                if img_index < panel_count:
+                    img = await self._create_image(
+                        panel_images[img_index],
+                        max_width=cell_width - 0.1 * inch,
+                        max_height=cell_height - 0.1 * inch,
+                    )
+                    row_data.append(img if img else "")
+                    img_index += 1
+                else:
+                    row_data.append("")
+            table_data.append(row_data)
+
+        # Create table
+        table = Table(
+            table_data,
+            colWidths=[cell_width] * cols,
+            rowHeights=[cell_height] * rows,
+        )
+
+        table.setStyle(TableStyle([
+            ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+            ("BOX", (0, 0), (-1, -1), 1, colors.black),
+            ("INNERGRID", (0, 0), (-1, -1), 0.5, colors.gray),
+            ("LEFTPADDING", (0, 0), (-1, -1), 2),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 2),
+            ("TOPPADDING", (0, 0), (-1, -1), 2),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
+        ]))
+
+        elements.append(table)
 
     async def _create_image(
         self,

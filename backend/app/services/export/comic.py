@@ -46,14 +46,28 @@ class ComicExporter(BaseExporter):
                 if cover_data:
                     zf.writestr("000_cover.jpg", cover_data)
 
+            # Determine if comic format
+            is_comic = story.generation_inputs.format == "comic"
+
             # Add page images
             for page in story.pages:
-                if page.illustration_url:
-                    img_data = await self.download_image(page.illustration_url)
-                    if img_data:
-                        # Comic readers typically sort by filename
-                        filename = f"{page.page_number:03d}.jpg"
-                        zf.writestr(filename, img_data)
+                if is_comic and page.panels:
+                    # Comic format: export each panel as separate image
+                    for panel in page.panels:
+                        if panel.illustration_url:
+                            img_data = await self.download_image(panel.illustration_url)
+                            if img_data:
+                                # Format: page_panel (e.g., 001_1.jpg, 001_2.jpg)
+                                filename = f"{page.page_number:03d}_{panel.panel_number:02d}.jpg"
+                                zf.writestr(filename, img_data)
+                else:
+                    # Storybook format: single image per page
+                    if page.illustration_url:
+                        img_data = await self.download_image(page.illustration_url)
+                        if img_data:
+                            # Comic readers typically sort by filename
+                            filename = f"{page.page_number:03d}.jpg"
+                            zf.writestr(filename, img_data)
 
             # Add ComicInfo.xml for metadata
             comic_info = self._create_comic_info(story)

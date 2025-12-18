@@ -128,25 +128,29 @@ class PDFExporter(BaseExporter):
             textColor=colors.gray,
         )
 
-        # Cover page
-        elements.append(Spacer(1, 0.5 * inch))
-
-        # Cover image if available
+        # Cover page - full page image
         if story.cover_image_url:
             cover_data = await self.download_image(story.cover_image_url)
             if cover_data:
-                cover_img = await self._create_image(cover_data, max_width=5*inch, max_height=5.5*inch)
+                # Full page dimensions (minus margins)
+                page_width = self.page_size[0] - 2 * self.margin
+                page_height = self.page_size[1] - 2 * self.margin
+                cover_img = await self._create_panel_image(
+                    cover_data,
+                    target_width=page_width,
+                    target_height=page_height,
+                    crop=False,  # Scale to fit, preserve aspect ratio
+                )
                 if cover_img:
                     elements.append(cover_img)
-                    elements.append(Spacer(1, 0.3 * inch))
-
-        elements.append(Paragraph(story.title, title_style))
-
-        # Subtitle with format and age
-        subtitle = f"A {story.generation_inputs.format.title()} for ages {story.generation_inputs.audience_age}"
-        elements.append(Paragraph(subtitle, subtitle_style))
-
-        elements.append(PageBreak())
+                    elements.append(PageBreak())
+        else:
+            # No cover image - show title text instead
+            elements.append(Spacer(1, 2 * inch))
+            elements.append(Paragraph(story.title, title_style))
+            subtitle = f"A {story.generation_inputs.format.title()} for ages {story.generation_inputs.audience_age}"
+            elements.append(Paragraph(subtitle, subtitle_style))
+            elements.append(PageBreak())
 
         # Determine if comic format
         is_comic = story.generation_inputs.format == "comic"

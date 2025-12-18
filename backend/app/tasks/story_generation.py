@@ -1197,29 +1197,81 @@ def _get_panel_aspect_ratio(panel_count: int, layout: Optional[str]) -> str:
 
 def _build_panel_prompt(panel, inputs) -> str:
     """
-    Build panel illustration prompt with instructions for speech bubble space.
+    Build panel illustration prompt with dialogue and text integrated.
 
     Args:
-        panel: Panel model with illustration_prompt
+        panel: Panel model with illustration_prompt, dialogue, caption, sound_effects
         inputs: GenerationInputs
 
     Returns:
-        Enhanced panel prompt
+        Enhanced panel prompt with text elements
     """
     base_prompt = panel.illustration_prompt or ""
 
-    # Add comic-specific instructions
+    # Build dialogue section
+    dialogue_text = ""
+    if panel.dialogue:
+        dialogue_lines = []
+        for d in panel.dialogue:
+            bubble_style = {
+                "speech": "speech bubble",
+                "thought": "thought bubble (cloud shape)",
+                "shout": "jagged/spiky speech bubble",
+                "whisper": "dashed-line speech bubble",
+            }.get(d.style, "speech bubble")
+            dialogue_lines.append(f'- {d.character} says in a {bubble_style}: "{d.text}"')
+        dialogue_text = "\n".join(dialogue_lines)
+
+    # Build caption section
+    caption_text = ""
+    if panel.caption:
+        caption_text = f'Caption box (rectangular, usually at top or bottom): "{panel.caption}"'
+
+    # Build sound effects section
+    sound_effects_text = ""
+    if panel.sound_effects:
+        sfx_lines = []
+        for sfx in panel.sound_effects:
+            style_desc = {
+                "impact": "bold, explosive, with motion lines",
+                "whoosh": "italicized, with speed lines",
+                "ambient": "smaller, subtle text",
+                "dramatic": "large, dramatic lettering",
+            }.get(sfx.style, "bold comic lettering")
+            sfx_lines.append(f'- Sound effect "{sfx.text}" ({style_desc})')
+        sound_effects_text = "\n".join(sfx_lines)
+
+    # Combine all text elements
+    text_elements = []
+    if dialogue_text:
+        text_elements.append(f"SPEECH BUBBLES:\n{dialogue_text}")
+    if caption_text:
+        text_elements.append(f"CAPTION:\n{caption_text}")
+    if sound_effects_text:
+        text_elements.append(f"SOUND EFFECTS:\n{sound_effects_text}")
+
+    text_section = "\n\n".join(text_elements) if text_elements else "No dialogue or text in this panel."
+
+    # Build the complete prompt
     enhanced_prompt = f"""{base_prompt}
 
-COMIC PANEL INSTRUCTIONS:
-- This is a single comic panel illustration
+COMIC PANEL FORMAT:
 - Art style: {inputs.illustration_style}
 - Target age: {inputs.audience_age} years old
-- IMPORTANT: Leave clear space in the top portion of the panel for speech bubbles
-- Focus on dynamic poses and expressions
-- Use clear, bold linework suitable for comics
-- Avoid text, speech bubbles, or captions in the image itself (these will be overlaid)
-- Keep the background simple enough to not distract from the characters"""
+
+TEXT TO INCLUDE IN THE IMAGE:
+{text_section}
+
+RENDERING INSTRUCTIONS:
+- Draw this as a complete comic panel WITH all speech bubbles, captions, and sound effects rendered directly in the image
+- Speech bubbles should be white with black outlines, with clear readable text inside
+- Position speech bubbles near the speaking character's head, with a tail pointing to them
+- Captions go in rectangular boxes, typically at the top or bottom of the panel
+- Sound effects should be bold, stylized comic lettering integrated into the scene
+- Use clear, legible comic book font style for all text
+- Ensure text is large enough to read easily
+- Keep {inputs.illustration_style} art style throughout
+- Make the text a natural part of the comic panel composition"""
 
     return enhanced_prompt
 

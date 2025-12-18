@@ -128,18 +128,18 @@ class PDFExporter(BaseExporter):
             textColor=colors.gray,
         )
 
-        # Cover page - full page image
+        # Cover page - full page image (crop to fill)
         if story.cover_image_url:
             cover_data = await self.download_image(story.cover_image_url)
             if cover_data:
-                # Full page dimensions (with small buffer to fit in frame)
-                page_width = self.page_size[0] - 2 * self.margin - 0.1 * inch
-                page_height = self.page_size[1] - 2 * self.margin - 0.1 * inch
+                # Full page dimensions - conservative to fit ReportLab frame (492x672 for LETTER)
+                page_width = self.page_size[0] - 2 * self.margin - 0.2 * inch
+                page_height = self.page_size[1] - 2 * self.margin - 0.2 * inch
                 cover_img = await self._create_panel_image(
                     cover_data,
                     target_width=page_width,
                     target_height=page_height,
-                    crop=False,  # Scale to fit, preserve aspect ratio
+                    crop=True,  # Crop to fill entire page
                 )
                 if cover_img:
                     elements.append(cover_img)
@@ -225,9 +225,10 @@ class PDFExporter(BaseExporter):
         else:
             cols, rows = 3, 3
 
-        # Calculate available space - leave room for page number
-        page_width = self.page_size[0] - 2 * self.margin
-        page_height = self.page_size[1] - 2 * self.margin - 0.4 * inch  # Space for page number
+        # Calculate available space - use conservative dimensions to fit ReportLab frame
+        # Frame is smaller than page minus margins due to internal padding
+        page_width = self.page_size[0] - 2 * self.margin - 0.25 * inch
+        page_height = self.page_size[1] - 2 * self.margin - 0.5 * inch  # Space for page number + buffer
 
         # Gap between panels
         gap = 0.06 * inch
@@ -271,13 +272,10 @@ class PDFExporter(BaseExporter):
         table.setStyle(TableStyle([
             ("ALIGN", (0, 0), (-1, -1), "CENTER"),
             ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-            ("BOX", (0, 0), (-1, -1), 2, colors.black),
-            ("INNERGRID", (0, 0), (-1, -1), 1.5, colors.black),
             ("LEFTPADDING", (0, 0), (-1, -1), cell_padding),
             ("RIGHTPADDING", (0, 0), (-1, -1), cell_padding),
             ("TOPPADDING", (0, 0), (-1, -1), cell_padding),
             ("BOTTOMPADDING", (0, 0), (-1, -1), cell_padding),
-            ("BACKGROUND", (0, 0), (-1, -1), colors.white),
         ]))
 
         elements.append(table)
@@ -341,15 +339,19 @@ class PDFExporter(BaseExporter):
                 height_ratio = target_height_px / orig_height
                 scale = min(width_ratio, height_ratio)
 
-                new_width_px = int(orig_width * scale)
-                new_height_px = int(orig_height * scale)
-
                 if scale < 1.0:
+                    # Downscale to fit
+                    new_width_px = int(orig_width * scale)
+                    new_height_px = int(orig_height * scale)
                     pil_img = pil_img.resize((new_width_px, new_height_px), PILImage.Resampling.LANCZOS)
+                else:
+                    # Image fits within target - use original dimensions
+                    new_width_px = orig_width
+                    new_height_px = orig_height
 
-                # Calculate display dimensions
-                final_width = new_width_px / 150 * inch
-                final_height = new_height_px / 150 * inch
+                # Calculate display dimensions - ensure never exceeds target
+                final_width = min(new_width_px / 150 * inch, target_width)
+                final_height = min(new_height_px / 150 * inch, target_height)
 
             # Convert to RGB if necessary
             if pil_img.mode in ('RGBA', 'LA', 'P'):

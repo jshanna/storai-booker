@@ -130,6 +130,7 @@ services:
 
       # Storage
       S3_ENDPOINT_URL: http://minio:9000
+      S3_EXTERNAL_ENDPOINT_URL: http://minio:9000
       S3_PUBLIC_URL: /storage
       S3_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-minioadmin}
       S3_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
@@ -142,6 +143,10 @@ services:
       DEFAULT_LLM_PROVIDER: ${DEFAULT_LLM_PROVIDER:-google}
       DEFAULT_TEXT_MODEL: ${DEFAULT_TEXT_MODEL:-gemini-2.5-flash}
       DEFAULT_IMAGE_MODEL: ${DEFAULT_IMAGE_MODEL:-gemini-2.5-flash-image}
+
+      # JWT & Security
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-change-this-in-production}
+      SECRET_KEY: ${SECRET_KEY:-change-this-in-production}
     depends_on:
       mongodb:
         condition: service_healthy
@@ -191,6 +196,7 @@ services:
 
       # Storage
       S3_ENDPOINT_URL: http://minio:9000
+      S3_EXTERNAL_ENDPOINT_URL: http://minio:9000
       S3_PUBLIC_URL: /storage
       S3_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-minioadmin}
       S3_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
@@ -203,6 +209,10 @@ services:
       DEFAULT_LLM_PROVIDER: ${DEFAULT_LLM_PROVIDER:-google}
       DEFAULT_TEXT_MODEL: ${DEFAULT_TEXT_MODEL:-gemini-2.5-flash}
       DEFAULT_IMAGE_MODEL: ${DEFAULT_IMAGE_MODEL:-gemini-2.5-flash-image}
+
+      # JWT & Security
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-change-this-in-production}
+      SECRET_KEY: ${SECRET_KEY:-change-this-in-production}
     depends_on:
       mongodb:
         condition: service_healthy

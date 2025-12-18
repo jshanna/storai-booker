@@ -40,10 +40,22 @@ class BaseExporter(ABC):
         """
         Convert external URL to internal Docker URL for downloading.
 
-        External URLs use localhost:9000 but inside Docker we need minio:9000.
+        Handles multiple URL formats:
+        - /storage/bucket/key -> http://minio:9000/bucket/key (public URL path)
+        - http://localhost:9000/... -> http://minio:9000/... (external endpoint)
         """
         if not url:
             return url
+
+        # Handle /storage/ public URL path (used in containerized setup)
+        if url.startswith("/storage/"):
+            internal_endpoint = settings.s3_endpoint_url or "http://minio:9000"
+            return url.replace("/storage/", f"{internal_endpoint}/", 1)
+
+        # Handle S3_PUBLIC_URL prefix if set (e.g., "http://localhost:3000/storage")
+        if settings.s3_public_url and url.startswith(settings.s3_public_url):
+            internal_endpoint = settings.s3_endpoint_url or "http://minio:9000"
+            return url.replace(settings.s3_public_url, internal_endpoint, 1)
 
         # Convert external endpoint to internal endpoint
         external_endpoint = settings.s3_external_endpoint_url

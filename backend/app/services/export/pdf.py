@@ -272,7 +272,7 @@ class PDFExporter(BaseExporter):
         max_height: float = 5 * inch,
     ) -> Optional[RLImage]:
         """
-        Create ReportLab Image from bytes.
+        Create ReportLab Image from bytes with compression.
 
         Args:
             img_data: Image bytes
@@ -285,22 +285,49 @@ class PDFExporter(BaseExporter):
         try:
             from PIL import Image as PILImage
 
-            # Get image dimensions
+            # Open and process image
             img_buffer = io.BytesIO(img_data)
             pil_img = PILImage.open(img_buffer)
             orig_width, orig_height = pil_img.size
 
-            # Calculate scaled dimensions
-            width_ratio = max_width / orig_width
-            height_ratio = max_height / orig_height
+            # Calculate target dimensions for PDF (72 DPI is standard for PDF)
+            # Limit to reasonable pixel dimensions for the target size
+            target_width_px = int(max_width / inch * 150)  # 150 DPI
+            target_height_px = int(max_height / inch * 150)
+
+            # Scale down if image is larger than target
+            width_ratio = target_width_px / orig_width
+            height_ratio = target_height_px / orig_height
             scale = min(width_ratio, height_ratio, 1.0)
 
-            width = orig_width * scale
-            height = orig_height * scale
+            if scale < 1.0:
+                new_width = int(orig_width * scale)
+                new_height = int(orig_height * scale)
+                pil_img = pil_img.resize((new_width, new_height), PILImage.Resampling.LANCZOS)
+
+            # Convert to RGB if necessary (remove alpha channel)
+            if pil_img.mode in ('RGBA', 'LA', 'P'):
+                background = PILImage.new('RGB', pil_img.size, (255, 255, 255))
+                if pil_img.mode == 'P':
+                    pil_img = pil_img.convert('RGBA')
+                background.paste(pil_img, mask=pil_img.split()[-1] if pil_img.mode == 'RGBA' else None)
+                pil_img = background
+
+            # Save as compressed JPEG
+            compressed_buffer = io.BytesIO()
+            pil_img.save(compressed_buffer, format='JPEG', quality=75, optimize=True)
+            compressed_buffer.seek(0)
+
+            # Calculate display dimensions
+            display_width_ratio = max_width / pil_img.width
+            display_height_ratio = max_height / pil_img.height
+            display_scale = min(display_width_ratio, display_height_ratio, 1.0)
+
+            width = pil_img.width * display_scale
+            height = pil_img.height * display_scale
 
             # Create ReportLab image
-            img_buffer.seek(0)
-            rl_img = RLImage(img_buffer, width=width, height=height)
+            rl_img = RLImage(compressed_buffer, width=width, height=height)
             rl_img.hAlign = "CENTER"
 
             return rl_img

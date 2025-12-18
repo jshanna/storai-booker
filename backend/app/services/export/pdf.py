@@ -132,9 +132,9 @@ class PDFExporter(BaseExporter):
         if story.cover_image_url:
             cover_data = await self.download_image(story.cover_image_url)
             if cover_data:
-                # Full page dimensions (minus margins)
-                page_width = self.page_size[0] - 2 * self.margin
-                page_height = self.page_size[1] - 2 * self.margin
+                # Full page dimensions (with small buffer to fit in frame)
+                page_width = self.page_size[0] - 2 * self.margin - 0.1 * inch
+                page_height = self.page_size[1] - 2 * self.margin - 0.1 * inch
                 cover_img = await self._create_panel_image(
                     cover_data,
                     target_width=page_width,

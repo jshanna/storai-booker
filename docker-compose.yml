@@ -152,10 +152,17 @@ services:
     environment:
       CELERY_BROKER_URL: redis://redis:6379/1
       CELERY_RESULT_BACKEND: redis://redis:6379/2
+      FLOWER_UNAUTHENTICATED_API: "true"  # Enable API access for local dev
     depends_on:
       - redis
     profiles:
       - full  # Only start with --profile full
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5555/healthcheck"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
 
   # React Frontend with Nginx
   frontend:

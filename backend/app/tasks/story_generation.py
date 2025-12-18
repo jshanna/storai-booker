@@ -669,37 +669,62 @@ async def _generate_story_workflow(story_id: str, task) -> dict:
                         )
                         continue
 
-                    # Regenerate page
+                    # Regenerate page - use correct method based on format
                     logger.info(f"Regenerating page {page_number} due to: {issue_description}")
-                    new_page = await page_generator.regenerate_page(
-                        page=old_page,
-                        issue_description=issue_description,
-                        metadata=metadata,
-                        inputs=story.generation_inputs,
-                    )
+                    if is_comic:
+                        new_page = await page_generator.regenerate_comic_page(
+                            page=old_page,
+                            issue_description=issue_description,
+                            metadata=metadata,
+                            inputs=story.generation_inputs,
+                        )
+                    else:
+                        new_page = await page_generator.regenerate_page(
+                            page=old_page,
+                            issue_description=issue_description,
+                            metadata=metadata,
+                            inputs=story.generation_inputs,
+                        )
 
                     # Generate illustration for regenerated page
                     try:
-                        logger.info(f"Generating illustration for regenerated page {page_number}")
-                        illustration_url = await _generate_page_illustration(
-                            page=new_page,
-                            story_id=str(story.id),
-                            image_provider=image_provider,
-                            safety_settings=app_settings.safety_settings,
-                            character_reference=character_reference_bytes,
-                            max_retries=settings.image_max_retries,
-                        )
-
-                        if illustration_url:
-                            new_page.illustration_url = illustration_url
+                        if is_comic and new_page.panels:
+                            # Generate panel illustrations for comic
+                            logger.info(f"Generating {len(new_page.panels)} panel illustrations for regenerated page {page_number}")
                             story.pages[page_index] = new_page
                             await story.save()
-                            logger.info(f"Illustration saved for regenerated page {page_number}")
+                            await _generate_comic_panel_illustrations(
+                                page=new_page,
+                                page_index=page_index,
+                                story=story,
+                                image_provider=image_provider,
+                                safety_settings=app_settings.safety_settings,
+                                character_reference=character_reference_bytes,
+                                max_retries=settings.image_max_retries,
+                            )
+                            logger.info(f"Panel illustrations saved for regenerated page {page_number}")
                         else:
-                            logger.error(f"Failed to generate illustration for regenerated page {page_number}")
-                            # Replace page even without illustration
-                            story.pages[page_index] = new_page
-                            await story.save()
+                            # Generate single illustration for storybook
+                            logger.info(f"Generating illustration for regenerated page {page_number}")
+                            illustration_url = await _generate_page_illustration(
+                                page=new_page,
+                                story_id=str(story.id),
+                                image_provider=image_provider,
+                                safety_settings=app_settings.safety_settings,
+                                character_reference=character_reference_bytes,
+                                max_retries=settings.image_max_retries,
+                            )
+
+                            if illustration_url:
+                                new_page.illustration_url = illustration_url
+                                story.pages[page_index] = new_page
+                                await story.save()
+                                logger.info(f"Illustration saved for regenerated page {page_number}")
+                            else:
+                                logger.error(f"Failed to generate illustration for regenerated page {page_number}")
+                                # Replace page even without illustration
+                                story.pages[page_index] = new_page
+                                await story.save()
 
                     except Exception as e:
                         logger.error(f"Failed to generate illustration for regenerated page {page_number}: {e}")

@@ -1,13 +1,12 @@
 /**
- * Comic page renderer with panel grid and speech bubble overlays.
+ * Comic page renderer with panel grid.
+ * Note: Speech bubbles and sound effects are rendered directly in the generated images.
  */
 
 import * as React from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ImageOff } from 'lucide-react';
 import type { Page, Panel } from '@/types/api';
-import { SpeechBubble } from './SpeechBubble';
-import { SoundEffectOverlay } from './SoundEffectOverlay';
 
 interface ComicPageRendererProps {
   page: Page;
@@ -92,7 +91,7 @@ function PanelRenderer({ panel, pageNumber, gridArea }: PanelRendererProps) {
       className="relative bg-muted border-2 border-foreground/20 overflow-hidden"
       style={gridArea ? { gridArea } : undefined}
     >
-      {/* Panel Image */}
+      {/* Panel Image - text elements are rendered in the image */}
       <div className="w-full h-full">
         {panel.illustration_url ? (
           <>
@@ -122,34 +121,6 @@ function PanelRenderer({ panel, pageNumber, gridArea }: PanelRendererProps) {
           </div>
         )}
       </div>
-
-      {/* Caption (narrator box) */}
-      {panel.caption && (
-        <div className="absolute top-1 left-1 right-1 bg-amber-100 border border-amber-300 rounded px-2 py-1 text-xs shadow-sm">
-          <p className="text-foreground italic">{panel.caption}</p>
-        </div>
-      )}
-
-      {/* Dialogue bubbles */}
-      {panel.dialogue.map((entry, idx) => (
-        <SpeechBubble
-          key={`dialogue-${idx}`}
-          character={entry.character}
-          text={entry.text}
-          position={entry.position}
-          style={entry.style}
-        />
-      ))}
-
-      {/* Sound effects */}
-      {panel.sound_effects.map((effect, idx) => (
-        <SoundEffectOverlay
-          key={`sfx-${idx}`}
-          text={effect.text}
-          position={effect.position}
-          style={effect.style}
-        />
-      ))}
 
       {/* Panel number (small indicator) */}
       <div className="absolute bottom-0.5 right-0.5 text-[10px] text-muted-foreground/50">

@@ -309,3 +309,115 @@ Please correct these issues in your new generation."""
         except Exception as e:
             logger.error(f"Page {page.page_number} regeneration failed: {e}")
             raise
+
+    async def regenerate_comic_page(
+        self,
+        page: Page,
+        issue_description: str,
+        metadata: StoryMetadata,
+        inputs: GenerationInputs,
+    ) -> Page:
+        """
+        Regenerate a comic page that failed validation.
+
+        Args:
+            page: Original comic page that needs regeneration
+            issue_description: Description of what was wrong
+            metadata: Story metadata
+            inputs: Original user inputs
+
+        Returns:
+            New Page object with corrected comic content
+
+        Raises:
+            Exception: If regeneration fails
+        """
+        try:
+            logger.warning(
+                f"Regenerating comic page {page.page_number} due to: {issue_description}"
+            )
+
+            # Get the page outline
+            page_outline = metadata.page_outlines[page.page_number - 1]
+
+            # Build prompt with feedback
+            base_prompt = build_comic_page_generation_prompt(
+                page_number=page.page_number,
+                page_outline=page_outline,
+                metadata=metadata,
+                inputs=inputs,
+            )
+
+            # Add feedback about the issue
+            prompt_with_feedback = f"""{base_prompt}
+
+**Previous Attempt Had Issues:**
+{issue_description}
+
+Please correct these issues in your new generation."""
+
+            # Generate new comic page version
+            comic_output: ComicPageGenerationOutput = await self.llm.generate_structured(
+                prompt=prompt_with_feedback,
+                response_model=ComicPageGenerationOutput,
+            )
+
+            # Convert LLM output to model objects
+            panels = []
+            for panel_out in comic_output.panels:
+                # Convert dialogue entries (normalize positions)
+                dialogue = [
+                    DialogueEntry(
+                        character=d.character,
+                        text=d.text,
+                        position=normalize_position(d.position),
+                        style=d.style,
+                    )
+                    for d in panel_out.dialogue
+                ]
+
+                # Convert sound effects (normalize positions)
+                sound_effects = [
+                    SoundEffect(
+                        text=s.text,
+                        position=normalize_position(s.position),
+                        style=s.style,
+                    )
+                    for s in panel_out.sound_effects
+                ]
+
+                panel = Panel(
+                    panel_number=panel_out.panel_number,
+                    illustration_prompt=panel_out.illustration_prompt,
+                    illustration_url=None,
+                    dialogue=dialogue,
+                    caption=panel_out.caption,
+                    sound_effects=sound_effects,
+                    aspect_ratio="1:1",
+                    generation_attempts=page.generation_attempts + 1,
+                    validated=False,
+                )
+                panels.append(panel)
+
+            # Create new Page object with comic panels
+            new_page = Page(
+                page_number=page.page_number,
+                text=None,  # Comics don't use page-level text
+                illustration_prompt=None,  # Comics use panel-level prompts
+                illustration_url=None,
+                panels=panels,
+                layout=comic_output.layout,
+                generation_attempts=page.generation_attempts + 1,
+                validated=False,
+            )
+
+            logger.info(
+                f"Comic page {page.page_number} regenerated with {len(panels)} panels "
+                f"(attempt {new_page.generation_attempts})"
+            )
+
+            return new_page
+
+        except Exception as e:
+            logger.error(f"Comic page {page.page_number} regeneration failed: {e}")
+            raise

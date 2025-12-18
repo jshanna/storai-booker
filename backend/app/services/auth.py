@@ -2,6 +2,7 @@
 from datetime import datetime, timedelta, timezone
 from typing import Optional, Tuple
 import secrets
+import hashlib
 
 import bcrypt
 from jose import jwt, JWTError
@@ -165,13 +166,14 @@ class AuthService:
         token_type = payload.get("type")
 
         if token_type == TOKEN_TYPE_ACCESS:
-            # For access tokens, blacklist the whole token
+            # For access tokens, blacklist using hash of the token
+            token_hash = hashlib.sha256(token.encode()).hexdigest()[:32]
             exp = payload.get("exp", 0)
             ttl = max(0, exp - int(datetime.now(timezone.utc).timestamp()))
             if ttl > 0:
                 # Cache service is synchronous, so no await needed
                 cache_service.set(
-                    f"{BLACKLIST_PREFIX}{token[:32]}",
+                    f"{BLACKLIST_PREFIX}{token_hash}",
                     "1",
                     ttl=ttl
                 )
@@ -201,8 +203,10 @@ class AuthService:
 
     async def is_token_blacklisted_async(self, token: str) -> bool:
         """Check if an access token is blacklisted."""
+        # Use hash of token for blacklist lookup
+        token_hash = hashlib.sha256(token.encode()).hexdigest()[:32]
         # Cache service is synchronous, so no await needed
-        result = cache_service.get(f"{BLACKLIST_PREFIX}{token[:32]}")
+        result = cache_service.get(f"{BLACKLIST_PREFIX}{token_hash}")
         return result is not None
 
     async def is_refresh_token_blacklisted_async(self, jti: str) -> bool:

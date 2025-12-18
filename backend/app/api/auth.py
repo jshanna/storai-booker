@@ -42,8 +42,9 @@ def user_to_response(user: User) -> UserResponse:
     )
 
 
-async def get_current_user_from_token(authorization: Optional[str] = Header(None)) -> User:
+async def get_current_user_from_token(authorization: Optional[str] = Header(None, alias="Authorization")) -> User:
     """Extract and validate user from Authorization header."""
+    logger.info(f"Authorization header received: {authorization[:50] if authorization else 'None'}...")
     if not authorization:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -65,14 +66,17 @@ async def get_current_user_from_token(authorization: Optional[str] = Header(None
     # Validate token
     payload = auth_service.validate_access_token(token)
     if not payload:
+        logger.warning(f"Token validation failed - invalid or expired")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired token",
             headers={"WWW-Authenticate": "Bearer"},
         )
+    logger.info(f"Token validated successfully, payload sub: {payload.get('sub')}")
 
     # Check if token is blacklisted
     if await auth_service.is_token_blacklisted_async(token):
+        logger.warning(f"Token is blacklisted")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token has been revoked",
@@ -82,6 +86,7 @@ async def get_current_user_from_token(authorization: Optional[str] = Header(None
     # Get user
     user_id = payload.get("sub")
     user = await auth_service.get_user_by_id(user_id)
+    logger.info(f"User lookup for {user_id}: {'found' if user else 'not found'}")
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

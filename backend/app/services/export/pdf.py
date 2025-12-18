@@ -129,16 +129,16 @@ class PDFExporter(BaseExporter):
         )
 
         # Cover page
-        elements.append(Spacer(1, 2 * inch))
+        elements.append(Spacer(1, 0.5 * inch))
 
         # Cover image if available
         if story.cover_image_url:
             cover_data = await self.download_image(story.cover_image_url)
             if cover_data:
-                cover_img = await self._create_image(cover_data, max_width=5*inch, max_height=6*inch)
+                cover_img = await self._create_image(cover_data, max_width=5*inch, max_height=5.5*inch)
                 if cover_img:
                     elements.append(cover_img)
-                    elements.append(Spacer(1, 0.5 * inch))
+                    elements.append(Spacer(1, 0.3 * inch))
 
         elements.append(Paragraph(story.title, title_style))
 

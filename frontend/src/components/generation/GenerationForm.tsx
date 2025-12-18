@@ -5,11 +5,12 @@
 import { useState, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useNavigate } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { ChevronLeft, ChevronRight, Loader2, AlertTriangle, Settings } from 'lucide-react';
 import { Form } from '@/components/ui/form';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { createStoryGenerationSchema, StoryGenerationFormData } from '@/lib/schemas/story';
 import { useCreateStory, useSettings } from '@/lib/hooks';
 import { FullPageSpinner } from '@/components/shared';
@@ -65,6 +66,9 @@ export function GenerationForm() {
   if (settingsLoading) {
     return <FullPageSpinner text="Loading settings..." />;
   }
+
+  // Check if API key is configured
+  const hasApiKey = Boolean(settings?.primary_llm_provider?.api_key);
 
   const validateCurrentStep = async (): Promise<boolean> => {
     let fieldsToValidate: (keyof StoryGenerationFormData)[] = [];
@@ -159,6 +163,23 @@ export function GenerationForm() {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-8">
+        {/* API Key Warning */}
+        {!hasApiKey && (
+          <Alert variant="destructive">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertTitle>API Key Required</AlertTitle>
+            <AlertDescription className="flex items-center justify-between">
+              <span>Please configure your LLM provider API key before generating stories.</span>
+              <Button variant="outline" size="sm" asChild className="ml-4">
+                <Link to="/settings">
+                  <Settings className="mr-2 h-4 w-4" />
+                  Go to Settings
+                </Link>
+              </Button>
+            </AlertDescription>
+          </Alert>
+        )}
+
         {/* Progress Indicator */}
         <FormProgress steps={STEPS} currentStep={currentStep} />
 
@@ -195,7 +216,7 @@ export function GenerationForm() {
                   <ChevronRight className="ml-2 h-4 w-4" />
                 </Button>
               ) : (
-                <Button type="submit" disabled={isPending}>
+                <Button type="submit" disabled={isPending || !hasApiKey}>
                   {isPending ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />

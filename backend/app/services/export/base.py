@@ -7,6 +7,8 @@ from typing import Optional
 import httpx
 from loguru import logger
 
+from app.core.config import settings
+
 
 @dataclass
 class ExportResult:
@@ -34,6 +36,24 @@ class BaseExporter(ABC):
         """
         pass
 
+    def _convert_to_internal_url(self, url: str) -> str:
+        """
+        Convert external URL to internal Docker URL for downloading.
+
+        External URLs use localhost:9000 but inside Docker we need minio:9000.
+        """
+        if not url:
+            return url
+
+        # Convert external endpoint to internal endpoint
+        external_endpoint = settings.s3_external_endpoint_url
+        internal_endpoint = settings.s3_endpoint_url
+
+        if external_endpoint and internal_endpoint and external_endpoint in url:
+            return url.replace(external_endpoint, internal_endpoint)
+
+        return url
+
     async def download_image(self, url: str) -> Optional[bytes]:
         """
         Download image from URL.
@@ -47,13 +67,16 @@ class BaseExporter(ABC):
         if not url:
             return None
 
+        # Convert external URL to internal Docker URL
+        internal_url = self._convert_to_internal_url(url)
+
         try:
             async with httpx.AsyncClient() as client:
-                response = await client.get(url, timeout=30.0)
+                response = await client.get(internal_url, timeout=30.0)
                 response.raise_for_status()
                 return response.content
         except Exception as e:
-            logger.warning(f"Failed to download image from {url}: {e}")
+            logger.warning(f"Failed to download image from {internal_url} (original: {url}): {e}")
             return None
 
     def sanitize_filename(self, title: str, max_length: int = 50) -> str:

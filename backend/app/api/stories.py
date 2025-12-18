@@ -56,10 +56,18 @@ async def generate_story(
                 detail=str(e),
             )
 
-        # Validate age against settings (use current user's settings)
+        # Get user's settings
         from app.models.settings import AppSettings
         settings = await AppSettings.find_one({"user_id": str(current_user.id)})
 
+        # Check if API key is configured
+        if not settings or not settings.primary_llm_provider.api_key:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="No API key configured. Please go to Settings and configure your LLM provider API key before generating stories.",
+            )
+
+        # Validate age against settings
         if settings and settings.age_range.enforce:
             age = request.generation_inputs.audience_age
             if age < settings.age_range.min or age > settings.age_range.max:
@@ -71,7 +79,7 @@ async def generate_story(
 
         # Check topic appropriateness (fail fast before creating story document)
         try:
-            llm_provider = LLMProviderFactory.create_from_settings()
+            llm_provider = LLMProviderFactory.create_from_db_settings(settings)
             content_safety = ContentSafetyService(llm_provider)
             is_appropriate, reason = await content_safety.check_topic_appropriateness(request.generation_inputs)
 

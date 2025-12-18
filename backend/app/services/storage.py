@@ -33,6 +33,16 @@ class StorageService:
         self.endpoint_url = settings.s3_endpoint_url
         self.public_url = settings.s3_public_url
 
+        # Create a separate client for URL generation with external endpoint
+        external_endpoint = settings.s3_external_endpoint_url or settings.s3_endpoint_url
+        self.url_client = boto3.client(
+            "s3",
+            endpoint_url=external_endpoint,
+            aws_access_key_id=settings.s3_access_key_id,
+            aws_secret_access_key=settings.s3_secret_access_key,
+            region_name=settings.s3_region,
+        )
+
     def _get_object_key(self, story_id: str, filename: str) -> str:
         """
         Generate S3 object key for a file.
@@ -99,9 +109,9 @@ class StorageService:
             # Generate public URL: /storage/bucket-name/object-key
             return f"{self.public_url}/{self.bucket_name}/{object_key}"
 
-        # Otherwise generate a signed URL
+        # Otherwise generate a signed URL using the URL client (external endpoint)
         try:
-            url = self.client.generate_presigned_url(
+            url = self.url_client.generate_presigned_url(
                 "get_object",
                 Params={
                     "Bucket": self.bucket_name,

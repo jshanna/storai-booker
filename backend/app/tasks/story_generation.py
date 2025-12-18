@@ -49,6 +49,8 @@ async def get_app_settings(user_id: str) -> AppSettings:
     """
     Get application settings for a specific user from database.
 
+    API keys are user-specific and should NOT be shared between users.
+
     Args:
         user_id: User ID to get settings for
 
@@ -56,16 +58,21 @@ async def get_app_settings(user_id: str) -> AppSettings:
         AppSettings instance
 
     Raises:
-        ValueError: If settings not found
+        ValueError: If settings not found or no API key configured
     """
     await get_mongodb_client()
-    # Try to get user-specific settings first
+    # Get user-specific settings only - NO fallback to default (security)
     app_settings = await AppSettings.find_one({"user_id": user_id})
     if not app_settings:
-        # Fall back to default settings (for migration period)
-        app_settings = await AppSettings.find_one({"user_id": "default"})
-    if not app_settings:
-        raise ValueError(f"Application settings not found for user {user_id}")
+        raise ValueError(
+            f"No settings found for user {user_id}. "
+            "Please configure your API key in Settings before generating stories."
+        )
+    if not app_settings.primary_llm_provider or not app_settings.primary_llm_provider.api_key:
+        raise ValueError(
+            "No API key configured. Please go to Settings and configure your "
+            "LLM provider API key before generating stories."
+        )
     return app_settings
 
 
@@ -307,7 +314,7 @@ async def _generate_story_workflow(story_id: str, task) -> dict:
     story.status = "generating"
     await story.save()
 
-    # Get app settings from database (user-specific)
+    # Get app settings from database (user-specific, no fallback)
     app_settings = await get_app_settings(story.user_id)
     logger.info(f"Using API provider: {app_settings.primary_llm_provider.name} for user {story.user_id}")
 
@@ -318,8 +325,9 @@ async def _generate_story_workflow(story_id: str, task) -> dict:
         meta={"phase": "safety_check", "progress": 0.05, "message": "Checking content appropriateness..."}
     )
 
-    llm_provider = LLMProviderFactory.create_from_settings()
-    image_provider = ImageProviderFactory.create_from_settings()
+    # Create providers using user's API key from database settings (not env vars)
+    llm_provider = LLMProviderFactory.create_from_db_settings(app_settings)
+    image_provider = ImageProviderFactory.create_from_db_settings(app_settings)
 
     # Run topic appropriateness check
     content_safety = ContentSafetyService(llm_provider)
@@ -533,6 +541,7 @@ async def _generate_story_workflow(story_id: str, task) -> dict:
                     story=story,
                     image_provider=image_provider,
                     safety_settings=app_settings.safety_settings,
+                    character_reference=character_reference_bytes,
                 )
 
                 if cover_url:
@@ -575,6 +584,7 @@ async def _generate_story_workflow(story_id: str, task) -> dict:
                 story=story,
                 image_provider=image_provider,
                 safety_settings=app_settings.safety_settings,
+                character_reference=character_reference_bytes,
             )
 
             if cover_url:
@@ -695,6 +705,7 @@ async def _generate_story_workflow(story_id: str, task) -> dict:
                     story=story,
                     image_provider=image_provider,
                     safety_settings=app_settings.safety_settings,
+                    character_reference=character_reference_bytes,
                 )
 
                 if cover_url:
@@ -725,6 +736,7 @@ async def _generate_story_workflow(story_id: str, task) -> dict:
                     story=story,
                     image_provider=image_provider,
                     safety_settings=app_settings.safety_settings,
+                    character_reference=character_reference_bytes,
                 )
 
                 if cover_url:
@@ -815,11 +827,14 @@ async def _generate_page_workflow(story_id: str, page_number: int) -> dict:
     if not story:
         raise ValueError(f"Story {story_id} not found")
 
+    # Get user-specific settings
+    app_settings = await get_app_settings(story.user_id)
+
     # Get page outline
     page_outline = story.metadata.page_outlines[page_number - 1]
 
-    # Generate page
-    llm_provider = LLMProviderFactory.create_from_settings()
+    # Generate page using user's API key
+    llm_provider = LLMProviderFactory.create_from_db_settings(app_settings)
     page_generator = PageGeneratorAgent(llm_provider)
 
     page = await page_generator.generate_page(
@@ -886,8 +901,11 @@ async def _validate_story_workflow(story_id: str) -> dict:
     if not story:
         raise ValueError(f"Story {story_id} not found")
 
-    # Validate
-    llm_provider = LLMProviderFactory.create_from_settings()
+    # Get user-specific settings
+    app_settings = await get_app_settings(story.user_id)
+
+    # Validate using user's API key
+    llm_provider = LLMProviderFactory.create_from_db_settings(app_settings)
     validator = ValidatorAgent(llm_provider)
 
     validation_output = await validator.validate_story(story)
@@ -1012,6 +1030,7 @@ async def _generate_cover_image(
     story: Storybook,
     image_provider: BaseImageProvider,
     safety_settings=None,
+    character_reference: Optional[List[bytes]] = None,
 ) -> Optional[str]:
     """
     Generate cover image with title overlay.
@@ -1020,6 +1039,7 @@ async def _generate_cover_image(
         story: Complete storybook with metadata
         image_provider: Image generation provider
         safety_settings: Safety settings for image generation
+        character_reference: Optional list of character reference images for consistency
 
     Returns:
         Signed URL to the uploaded cover image, or None if generation fails
@@ -1035,6 +1055,11 @@ async def _generate_cover_image(
             "prompt": cover_prompt,
             "aspect_ratio": settings.cover_aspect_ratio,
         }
+
+        # Add character reference sheets if provided for consistency
+        if character_reference:
+            gen_kwargs["reference_images"] = character_reference
+            logger.debug(f"Using {len(character_reference)} character reference sheets for cover consistency")
 
         # Add safety settings if provided
         if safety_settings:

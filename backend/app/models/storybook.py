@@ -20,6 +20,53 @@ class GenerationInputs(BaseModel):
     panels_per_page: Optional[int] = Field(None, ge=1, le=9, description="Panels per page for comics")
 
 
+class DialogueEntry(BaseModel):
+    """A single dialogue bubble in a comic panel."""
+
+    character: str = Field(..., description="Character name speaking")
+    text: str = Field(..., description="Dialogue text")
+    position: str = Field(
+        default="top-left",
+        pattern="^(top-left|top-center|top-right|middle-left|middle-right|bottom-left|bottom-center|bottom-right)$",
+        description="Position of speech bubble in panel"
+    )
+    style: str = Field(
+        default="speech",
+        pattern="^(speech|thought|shout|whisper)$",
+        description="Bubble style"
+    )
+
+
+class SoundEffect(BaseModel):
+    """A sound effect in a comic panel."""
+
+    text: str = Field(..., description="Sound effect text (e.g., BOOM!, POW!)")
+    position: str = Field(
+        default="top-right",
+        pattern="^(top-left|top-center|top-right|middle-left|middle-center|middle-right|bottom-left|bottom-center|bottom-right)$",
+        description="Position in panel"
+    )
+    style: str = Field(
+        default="impact",
+        pattern="^(impact|whoosh|ambient|dramatic)$",
+        description="Visual style of the effect"
+    )
+
+
+class Panel(BaseModel):
+    """A single panel in a comic page."""
+
+    panel_number: int = Field(..., ge=1, le=9, description="Panel number on page")
+    illustration_url: Optional[str] = None
+    illustration_prompt: Optional[str] = None
+    dialogue: List[DialogueEntry] = Field(default_factory=list, description="Speech/thought bubbles")
+    caption: Optional[str] = Field(None, description="Narrator text box")
+    sound_effects: List[SoundEffect] = Field(default_factory=list, description="Sound effect overlays")
+    aspect_ratio: str = Field(default="1:1", description="Panel aspect ratio")
+    generation_attempts: int = Field(default=0)
+    validated: bool = Field(default=False)
+
+
 class CharacterDescription(BaseModel):
     """Expanded character description."""
 
@@ -42,12 +89,17 @@ class StoryMetadata(BaseModel):
 
 
 class Page(BaseModel):
-    """Storybook page."""
+    """Storybook or comic page."""
 
     page_number: int
-    text: Optional[str] = None  # For storybook format
-    illustration_prompt: Optional[str] = None  # For storybook format
-    illustration_url: Optional[str] = None  # For storybook format
+    # Storybook format fields
+    text: Optional[str] = None
+    illustration_prompt: Optional[str] = None
+    illustration_url: Optional[str] = None
+    # Comic format fields
+    panels: List[Panel] = Field(default_factory=list, description="Comic panels (empty for storybook)")
+    layout: Optional[str] = Field(None, description="Panel layout e.g. '2x2', '3x1', '1-2-1'")
+    # Common fields
     generation_attempts: int = Field(default=0)
     validated: bool = Field(default=False)
 

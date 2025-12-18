@@ -6,6 +6,37 @@ from pydantic import BaseModel, Field
 from app.models.storybook import GenerationInputs, CharacterDescription, StoryMetadata, Page
 
 
+class DialogueEntryResponse(BaseModel):
+    """Response schema for a dialogue entry in a comic panel."""
+
+    character: str
+    text: str
+    position: str
+    style: str
+
+
+class SoundEffectResponse(BaseModel):
+    """Response schema for a sound effect in a comic panel."""
+
+    text: str
+    position: str
+    style: str
+
+
+class PanelResponse(BaseModel):
+    """Response schema for a comic panel."""
+
+    panel_number: int
+    illustration_url: Optional[str] = None
+    illustration_prompt: Optional[str] = None
+    dialogue: List[DialogueEntryResponse] = []
+    caption: Optional[str] = None
+    sound_effects: List[SoundEffectResponse] = []
+    aspect_ratio: str = "1:1"
+    generation_attempts: int = 0
+    validated: bool = False
+
+
 class StoryCreateRequest(BaseModel):
     """Request schema for creating a new story."""
 
@@ -30,12 +61,17 @@ class StoryCreateRequest(BaseModel):
 
 
 class PageResponse(BaseModel):
-    """Response schema for a page."""
+    """Response schema for a page (storybook or comic)."""
 
     page_number: int
+    # Storybook format fields
     text: Optional[str] = None
     illustration_prompt: Optional[str] = None
     illustration_url: Optional[str] = None
+    # Comic format fields
+    panels: List[PanelResponse] = []
+    layout: Optional[str] = None
+    # Common fields
     generation_attempts: int = 0
     validated: bool = False
 

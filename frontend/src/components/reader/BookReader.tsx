@@ -1,11 +1,13 @@
 /**
  * Main book reader component with page flipping and navigation.
+ * Supports both storybook and comic formats.
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { BookPage } from './BookPage';
+import { ComicPageRenderer } from './ComicPageRenderer';
 import { PageNavigation } from './PageNavigation';
-import type { Story } from '@/types/api';
+import type { Story, Page } from '@/types/api';
 import { cn } from '@/lib/utils';
 
 interface BookReaderProps {
@@ -120,6 +122,53 @@ export function BookReader({ story }: BookReaderProps) {
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
   }, []);
 
+  // Determine if this is a comic format
+  const isComic = story.generation_inputs.format === 'comic';
+
+  // Render the appropriate page component based on format
+  const renderPage = (
+    page: Page,
+    story: Story,
+    pageIndex: number,
+    isFlipping: boolean,
+    flipDirection: 'forward' | 'backward'
+  ) => {
+    const isCover = pageIndex === 0 && !!story.cover_image_url;
+
+    // Cover page always uses BookPage (single image)
+    if (isCover) {
+      return (
+        <BookPage
+          page={page}
+          isFlipping={isFlipping}
+          flipDirection={flipDirection}
+          isCover={true}
+        />
+      );
+    }
+
+    // Comic format with panels uses ComicPageRenderer
+    if (isComic && page.panels && page.panels.length > 0) {
+      return (
+        <ComicPageRenderer
+          page={page}
+          isFlipping={isFlipping}
+          flipDirection={flipDirection}
+        />
+      );
+    }
+
+    // Default to BookPage for storybook format or comics without panels
+    return (
+      <BookPage
+        page={page}
+        isFlipping={isFlipping}
+        flipDirection={flipDirection}
+        isCover={false}
+      />
+    );
+  };
+
   return (
     <div
       ref={containerRef}
@@ -144,12 +193,7 @@ export function BookReader({ story }: BookReaderProps) {
       <div className="flex-1 flex items-center justify-center p-2 sm:p-4 md:p-8">
         <div className="w-full h-full max-w-6xl">
           {currentPage && (
-            <BookPage
-              page={currentPage}
-              isFlipping={isFlipping}
-              flipDirection={flipDirection}
-              isCover={currentPageIndex === 0 && !!story.cover_image_url}
-            />
+            renderPage(currentPage, story, currentPageIndex, isFlipping, flipDirection)
           )}
         </div>
       </div>

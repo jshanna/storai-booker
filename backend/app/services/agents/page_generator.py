@@ -1,11 +1,22 @@
 """Page generator agent for creating individual page content."""
 from loguru import logger
 
-from app.models.storybook import GenerationInputs, StoryMetadata, Page
+from app.models.storybook import (
+    GenerationInputs,
+    StoryMetadata,
+    Page,
+    Panel,
+    DialogueEntry,
+    SoundEffect,
+)
 from app.services.llm.base import BaseLLMProvider
 from app.services.llm.prompts.page_generation import (
     build_page_generation_prompt,
     PageGenerationOutput,
+)
+from app.services.llm.prompts.comic_page_generation import (
+    build_comic_page_generation_prompt,
+    ComicPageGenerationOutput,
 )
 
 
@@ -89,6 +100,108 @@ class PageGeneratorAgent:
 
         except Exception as e:
             logger.error(f"Page {page_number} generation failed: {e}")
+            raise
+
+    async def generate_comic_page(
+        self,
+        page_number: int,
+        page_outline: str,
+        metadata: StoryMetadata,
+        inputs: GenerationInputs,
+    ) -> Page:
+        """
+        Generate content for a comic page with panels.
+
+        Args:
+            page_number: Page number (1-indexed)
+            page_outline: Outline for this page from story planning
+            metadata: Complete story metadata
+            inputs: Original user inputs
+
+        Returns:
+            Page object with panels array populated
+
+        Raises:
+            Exception: If page generation fails
+        """
+        try:
+            logger.info(
+                f"Generating comic page {page_number}/{inputs.page_count} "
+                f"with {inputs.panels_per_page or 4} panels"
+            )
+
+            # Build the comic page generation prompt
+            prompt = build_comic_page_generation_prompt(
+                page_number=page_number,
+                page_outline=page_outline,
+                metadata=metadata,
+                inputs=inputs,
+            )
+
+            # Generate structured output from LLM
+            comic_output: ComicPageGenerationOutput = await self.llm.generate_structured(
+                prompt=prompt,
+                response_model=ComicPageGenerationOutput,
+            )
+
+            # Convert LLM output to model objects
+            panels = []
+            for panel_out in comic_output.panels:
+                # Convert dialogue entries
+                dialogue = [
+                    DialogueEntry(
+                        character=d.character,
+                        text=d.text,
+                        position=d.position,
+                        style=d.style,
+                    )
+                    for d in panel_out.dialogue
+                ]
+
+                # Convert sound effects
+                sound_effects = [
+                    SoundEffect(
+                        text=s.text,
+                        position=s.position,
+                        style=s.style,
+                    )
+                    for s in panel_out.sound_effects
+                ]
+
+                panel = Panel(
+                    panel_number=panel_out.panel_number,
+                    illustration_prompt=panel_out.illustration_prompt,
+                    illustration_url=None,  # Set during image generation
+                    dialogue=dialogue,
+                    caption=panel_out.caption,
+                    sound_effects=sound_effects,
+                    aspect_ratio="1:1",  # Default, can be customized per layout
+                    generation_attempts=1,
+                    validated=False,
+                )
+                panels.append(panel)
+
+            logger.info(
+                f"Comic page {page_number} generated: "
+                f"{len(panels)} panels, layout: {comic_output.layout}"
+            )
+
+            # Create Page object with panels
+            page = Page(
+                page_number=page_number,
+                text=None,  # Comics use panels, not page text
+                illustration_prompt=None,  # Each panel has its own prompt
+                illustration_url=None,  # Comics use panel images
+                panels=panels,
+                layout=comic_output.layout,
+                generation_attempts=1,
+                validated=False,
+            )
+
+            return page
+
+        except Exception as e:
+            logger.error(f"Comic page {page_number} generation failed: {e}")
             raise
 
     async def regenerate_page(

@@ -442,6 +442,11 @@ async def _generate_story_workflow(story_id: str, task) -> dict:
 
     page_generator = PageGeneratorAgent(llm_provider)
 
+    # Determine if this is a comic format
+    is_comic = story.generation_inputs.format == "comic"
+    if is_comic:
+        logger.info(f"Generating comic with {story.generation_inputs.panels_per_page or 4} panels per page")
+
     # Generate pages sequentially (parallel generation would require more complex coordination)
     for i in range(story.generation_inputs.page_count):
         page_number = i + 1
@@ -450,12 +455,21 @@ async def _generate_story_workflow(story_id: str, task) -> dict:
         logger.info(f"Generating page {page_number}/{story.generation_inputs.page_count}")
 
         try:
-            page = await page_generator.generate_page(
-                page_number=page_number,
-                page_outline=page_outline,
-                metadata=metadata,
-                inputs=story.generation_inputs,
-            )
+            # Use comic-specific generation for comic format
+            if is_comic:
+                page = await page_generator.generate_comic_page(
+                    page_number=page_number,
+                    page_outline=page_outline,
+                    metadata=metadata,
+                    inputs=story.generation_inputs,
+                )
+            else:
+                page = await page_generator.generate_page(
+                    page_number=page_number,
+                    page_outline=page_outline,
+                    metadata=metadata,
+                    inputs=story.generation_inputs,
+                )
 
             # Add page to story
             story.pages.append(page)
@@ -471,34 +485,48 @@ async def _generate_story_workflow(story_id: str, task) -> dict:
             else:
                 raise
 
-        # Generate and upload illustration for this page
-        try:
-            logger.info(f"Generating illustration for page {page_number}")
-            illustration_url = await _generate_page_illustration(
+        # Generate illustrations - different logic for comics vs storybooks
+        if is_comic and page.panels:
+            # Generate images for each panel
+            logger.info(f"Generating {len(page.panels)} panel illustrations for page {page_number}")
+            await _generate_comic_panel_illustrations(
                 page=page,
-                story_id=str(story.id),
+                page_index=len(story.pages) - 1,
+                story=story,
                 image_provider=image_provider,
                 safety_settings=app_settings.safety_settings,
                 character_reference=character_reference_bytes,
                 max_retries=settings.image_max_retries,
             )
+        else:
+            # Generate single illustration for storybook page
+            try:
+                logger.info(f"Generating illustration for page {page_number}")
+                illustration_url = await _generate_page_illustration(
+                    page=page,
+                    story_id=str(story.id),
+                    image_provider=image_provider,
+                    safety_settings=app_settings.safety_settings,
+                    character_reference=character_reference_bytes,
+                    max_retries=settings.image_max_retries,
+                )
 
-            if illustration_url:
-                # Update page with illustration URL
-                page.illustration_url = illustration_url
-                story.pages[-1] = page  # Update the last page in the list
-                await story.save()
-                logger.info(f"Illustration URL saved for page {page_number}")
-            else:
-                logger.warning(f"Failed to generate illustration for page {page_number}, continuing without it")
+                if illustration_url:
+                    # Update page with illustration URL
+                    page.illustration_url = illustration_url
+                    story.pages[-1] = page  # Update the last page in the list
+                    await story.save()
+                    logger.info(f"Illustration URL saved for page {page_number}")
+                else:
+                    logger.warning(f"Failed to generate illustration for page {page_number}, continuing without it")
 
-        except Exception as e:
-            error_msg = str(e).lower()
-            if "blocked" in error_msg or "safety" in error_msg or "prohibited" in error_msg:
-                logger.warning(f"Illustration for page {page_number} blocked by safety filters, continuing without image")
-            else:
-                logger.error(f"Error generating illustration for page {page_number}: {e}")
-            # Continue without image (graceful degradation)
+            except Exception as e:
+                error_msg = str(e).lower()
+                if "blocked" in error_msg or "safety" in error_msg or "prohibited" in error_msg:
+                    logger.warning(f"Illustration for page {page_number} blocked by safety filters, continuing without image")
+                else:
+                    logger.error(f"Error generating illustration for page {page_number}: {e}")
+                # Continue without image (graceful degradation)
 
         # Update progress
         progress = 0.3 + (0.5 * (page_number / story.generation_inputs.page_count))
@@ -1024,6 +1052,176 @@ async def _generate_page_illustration(
             await asyncio.sleep(wait_time)
 
     return None
+
+
+async def _generate_comic_panel_illustrations(
+    page: Page,
+    page_index: int,
+    story: Storybook,
+    image_provider: BaseImageProvider,
+    safety_settings=None,
+    character_reference: Optional[List[bytes]] = None,
+    max_retries: int = 3,
+) -> None:
+    """
+    Generate and upload illustrations for all panels in a comic page.
+
+    Args:
+        page: Comic page with panels array
+        page_index: Index of the page in story.pages
+        story: Storybook instance (for saving)
+        image_provider: Image generation provider
+        safety_settings: Safety settings for image generation
+        character_reference: List of character sheet images for consistency
+        max_retries: Maximum number of retry attempts per panel
+    """
+    if not page.panels:
+        logger.warning(f"No panels found for page {page.page_number}")
+        return
+
+    panels_per_page = len(page.panels)
+    logger.info(f"Generating illustrations for {panels_per_page} panels on page {page.page_number}")
+
+    # Determine aspect ratio based on panel count and layout
+    panel_aspect_ratio = _get_panel_aspect_ratio(panels_per_page, page.layout)
+
+    for panel_idx, panel in enumerate(page.panels):
+        panel_num = panel.panel_number
+        logger.info(f"Generating panel {panel_num} illustration (page {page.page_number})")
+
+        for attempt in range(max_retries):
+            try:
+                # Build panel-specific prompt with instructions for speech bubble space
+                panel_prompt = _build_panel_prompt(panel, story.generation_inputs)
+
+                # Build generation kwargs
+                gen_kwargs = {
+                    "prompt": panel_prompt,
+                    "aspect_ratio": panel_aspect_ratio,
+                }
+
+                # Add character reference sheets if provided
+                if character_reference:
+                    gen_kwargs["reference_images"] = character_reference
+                    logger.debug(f"Using {len(character_reference)} character reference sheets")
+
+                # Add safety settings if provided
+                if safety_settings:
+                    gen_kwargs.update({
+                        "safety_threshold": safety_settings.safety_threshold,
+                        "allow_adult_imagery": safety_settings.allow_adult_imagery,
+                        "bypass_safety_filters": safety_settings.bypass_safety_filters,
+                    })
+
+                # Generate panel image
+                panel_bytes = await image_provider.generate_image(**gen_kwargs)
+
+                logger.info(
+                    f"Generated panel {panel_num} illustration "
+                    f"({len(panel_bytes)} bytes)"
+                )
+
+                # Upload to storage
+                filename = f"page_{page.page_number}_panel_{panel_num}.png"
+                object_key = await storage_service.upload_from_bytes(
+                    story_id=str(story.id),
+                    filename=filename,
+                    data=panel_bytes,
+                    content_type="image/png",
+                )
+
+                logger.info(f"Uploaded panel {panel_num}: {object_key}")
+
+                # Get signed URL (30 days expiration)
+                panel_url = await storage_service.get_signed_url(
+                    object_key=object_key,
+                    expiration=86400 * 30,  # 30 days
+                )
+
+                # Update panel with illustration URL
+                panel.illustration_url = panel_url
+                story.pages[page_index].panels[panel_idx] = panel
+                await story.save()
+
+                logger.info(f"Panel {panel_num} illustration saved: {panel_url}")
+                break  # Success, move to next panel
+
+            except Exception as e:
+                error_msg = str(e).lower()
+                if "blocked" in error_msg or "safety" in error_msg or "prohibited" in error_msg:
+                    logger.warning(
+                        f"Panel {panel_num} illustration blocked by safety filters, "
+                        f"skipping panel"
+                    )
+                    break  # Don't retry safety blocks
+
+                logger.error(
+                    f"Failed to generate panel {panel_num} illustration "
+                    f"(attempt {attempt + 1}/{max_retries}): {e}"
+                )
+
+                if attempt >= max_retries - 1:
+                    logger.error(f"Exhausted all retries for panel {panel_num}")
+                else:
+                    # Exponential backoff
+                    wait_time = 2 ** attempt
+                    logger.info(f"Retrying in {wait_time} seconds...")
+                    await asyncio.sleep(wait_time)
+
+
+def _get_panel_aspect_ratio(panel_count: int, layout: Optional[str]) -> str:
+    """
+    Get appropriate aspect ratio for panels based on count and layout.
+
+    Args:
+        panel_count: Number of panels per page
+        layout: Layout string (e.g., "2x2", "3x1")
+
+    Returns:
+        Aspect ratio string (e.g., "1:1", "16:9")
+    """
+    # Default aspect ratios based on common layouts
+    if panel_count == 1:
+        return "4:3"  # Full page panel
+    elif panel_count == 2:
+        return "1:1"  # Square panels for side-by-side
+    elif panel_count == 3:
+        if layout and "3x1" in layout:
+            return "1:1"  # Wide panels for horizontal strip
+        return "1:1"  # Default square
+    elif panel_count in [4, 6, 9]:
+        return "1:1"  # Square panels for grid layouts
+    else:
+        return "1:1"  # Default to square
+
+
+def _build_panel_prompt(panel, inputs) -> str:
+    """
+    Build panel illustration prompt with instructions for speech bubble space.
+
+    Args:
+        panel: Panel model with illustration_prompt
+        inputs: GenerationInputs
+
+    Returns:
+        Enhanced panel prompt
+    """
+    base_prompt = panel.illustration_prompt or ""
+
+    # Add comic-specific instructions
+    enhanced_prompt = f"""{base_prompt}
+
+COMIC PANEL INSTRUCTIONS:
+- This is a single comic panel illustration
+- Art style: {inputs.illustration_style}
+- Target age: {inputs.audience_age} years old
+- IMPORTANT: Leave clear space in the top portion of the panel for speech bubbles
+- Focus on dynamic poses and expressions
+- Use clear, bold linework suitable for comics
+- Avoid text, speech bubbles, or captions in the image itself (these will be overlaid)
+- Keep the background simple enough to not distract from the characters"""
+
+    return enhanced_prompt
 
 
 async def _generate_cover_image(

@@ -35,11 +35,74 @@ export interface StoryMetadata {
   illustration_style_guide?: string | null;
 }
 
+// ============================================================================
+// Comic Panel Types
+// ============================================================================
+
+export type DialoguePosition =
+  | 'top-left'
+  | 'top-center'
+  | 'top-right'
+  | 'middle-left'
+  | 'middle-right'
+  | 'bottom-left'
+  | 'bottom-center'
+  | 'bottom-right';
+
+export type DialogueStyle = 'speech' | 'thought' | 'shout' | 'whisper';
+
+export interface DialogueEntry {
+  character: string;
+  text: string;
+  position: DialoguePosition;
+  style: DialogueStyle;
+}
+
+export type SoundEffectPosition =
+  | 'top-left'
+  | 'top-center'
+  | 'top-right'
+  | 'middle-left'
+  | 'middle-center'
+  | 'middle-right'
+  | 'bottom-left'
+  | 'bottom-center'
+  | 'bottom-right';
+
+export type SoundEffectStyle = 'impact' | 'whoosh' | 'ambient' | 'dramatic';
+
+export interface SoundEffect {
+  text: string;
+  position: SoundEffectPosition;
+  style: SoundEffectStyle;
+}
+
+export interface Panel {
+  panel_number: number;
+  illustration_url?: string | null;
+  illustration_prompt?: string | null;
+  dialogue: DialogueEntry[];
+  caption?: string | null;
+  sound_effects: SoundEffect[];
+  aspect_ratio: string;
+  generation_attempts: number;
+  validated: boolean;
+}
+
+// ============================================================================
+// Page Types
+// ============================================================================
+
 export interface Page {
   page_number: number;
+  // Storybook format fields
   text?: string | null;
   illustration_prompt?: string | null;
   illustration_url?: string | null;
+  // Comic format fields
+  panels?: Panel[];
+  layout?: string | null;
+  // Common fields
   generation_attempts: number;
   validated: boolean;
 }

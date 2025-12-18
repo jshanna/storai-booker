@@ -157,6 +157,8 @@ class ValidatorAgent:
         Returns:
             Formatted prompt for page validation
         """
+        is_comic = storybook.generation_inputs.format == "comic"
+
         # Get character descriptions
         character_info = ""
         if storybook.metadata.character_descriptions:
@@ -177,11 +179,16 @@ class ValidatorAgent:
 
         context = ""
         if prev_page:
-            context += f"\n**Previous Page:**\n{prev_page.text}\n"
+            prev_content = self._format_page_content(prev_page, is_comic)
+            context += f"\n**Previous Page:**\n{prev_content}\n"
         if next_page:
-            context += f"\n**Next Page:**\n{next_page.text}\n"
+            next_content = self._format_page_content(next_page, is_comic)
+            context += f"\n**Next Page:**\n{next_content}\n"
 
-        prompt = f"""You are validating page {page.page_number} of a children's storybook.
+        # Format current page content
+        page_content = self._format_page_content(page, is_comic)
+
+        prompt = f"""You are validating page {page.page_number} of a children's {"comic book" if is_comic else "storybook"}.
 
 **Story Information:**
 - Title: {storybook.title}
@@ -191,15 +198,14 @@ class ValidatorAgent:
 {context}
 
 **Page {page.page_number} Content:**
-Text: {page.text}
-Illustration Prompt: {page.illustration_prompt}
+{page_content}
 
 **Validation Criteria:**
 1. Character consistency with descriptions
 2. Narrative flow with surrounding pages
 3. Age-appropriate language and themes
-4. Illustration prompt quality and consistency
-5. Text length appropriate for page and age
+4. {"Panel composition and dialogue quality" if is_comic else "Illustration prompt quality and consistency"}
+5. {"Dialogue length appropriate for comics" if is_comic else "Text length appropriate for page and age"}
 
 Identify any issues with this page. For each issue:
 - Specify page number: {page.page_number}
@@ -210,6 +216,25 @@ Identify any issues with this page. For each issue:
 If no issues, mark as valid."""
 
         return prompt
+
+    def _format_page_content(self, page, is_comic: bool) -> str:
+        """Format page content for validation prompt."""
+        if is_comic and page.panels:
+            lines = []
+            for panel in page.panels:
+                lines.append(f"Panel {panel.panel_number}:")
+                if panel.illustration_prompt:
+                    lines.append(f"  Scene: {panel.illustration_prompt[:80]}...")
+                if panel.dialogue:
+                    for d in panel.dialogue:
+                        lines.append(f"  {d.character}: \"{d.text}\"")
+                if panel.caption:
+                    lines.append(f"  [Caption: {panel.caption}]")
+            return "\n".join(lines)
+        else:
+            text = page.text or "(no text)"
+            illustration = page.illustration_prompt or "(no illustration prompt)"
+            return f"Text: {text}\nIllustration Prompt: {illustration}"
 
     def get_pages_needing_regeneration(
         self,

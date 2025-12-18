@@ -107,12 +107,31 @@ Provide an overall quality assessment and suggestions for improvement."""
 
 def _format_pages_for_validation(storybook: Storybook) -> str:
     """Format pages for validation prompt."""
+    is_comic = storybook.generation_inputs.format == "comic"
     lines = []
+
     for page in storybook.pages:
         lines.append(f"**Page {page.page_number}:**")
-        lines.append(f"Text: {page.text}")
-        lines.append(f"Illustration: {page.illustration_prompt[:100]}...")
+
+        if is_comic and page.panels:
+            # Comic format: show panel content
+            for panel in page.panels:
+                lines.append(f"  Panel {panel.panel_number}:")
+                if panel.illustration_prompt:
+                    lines.append(f"    Scene: {panel.illustration_prompt[:80]}...")
+                if panel.dialogue:
+                    for d in panel.dialogue:
+                        lines.append(f"    {d.character}: \"{d.text}\"")
+                if panel.caption:
+                    lines.append(f"    [Caption: {panel.caption}]")
+        else:
+            # Storybook format: show text and illustration
+            lines.append(f"Text: {page.text or '(no text)'}")
+            if page.illustration_prompt:
+                lines.append(f"Illustration: {page.illustration_prompt[:100]}...")
+
         lines.append("")
+
     return "\n".join(lines)
 
 

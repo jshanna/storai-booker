@@ -1,7 +1,13 @@
 """Application configuration using Pydantic settings."""
+import secrets
 from typing import List
-from pydantic import Field
+from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+def _generate_secret() -> str:
+    """Generate a cryptographically secure random secret."""
+    return secrets.token_hex(32)
 
 
 class Settings(BaseSettings):
@@ -19,7 +25,7 @@ class Settings(BaseSettings):
     app_version: str = Field(default="0.1.0", alias="APP_VERSION")
     env: str = Field(default="development", alias="ENV")
     debug: bool = Field(default=True, alias="DEBUG")
-    secret_key: str = Field(default="dev-secret-key-change-in-production", alias="SECRET_KEY")
+    secret_key: str = Field(default="", alias="SECRET_KEY")
 
     # Server Settings
     host: str = Field(default="0.0.0.0", alias="HOST")
@@ -84,9 +90,9 @@ class Settings(BaseSettings):
 
     # JWT Settings
     jwt_secret_key: str = Field(
-        default="jwt-secret-key-change-in-production",
+        default="",
         alias="JWT_SECRET_KEY",
-        description="Secret key for signing JWT tokens"
+        description="Secret key for signing JWT tokens (auto-generated if not set)"
     )
     jwt_algorithm: str = Field(default="HS256", alias="JWT_ALGORITHM")
     jwt_access_token_expire_minutes: int = Field(
@@ -95,6 +101,26 @@ class Settings(BaseSettings):
     jwt_refresh_token_expire_days: int = Field(
         default=7, alias="JWT_REFRESH_TOKEN_EXPIRE_DAYS"
     )
+
+    @model_validator(mode="after")
+    def generate_secrets_if_missing(self) -> "Settings":
+        """Auto-generate cryptographically secure secrets if not provided."""
+        placeholder_values = {
+            "",
+            "dev-secret-key-change-in-production",
+            "jwt-secret-key-change-in-production",
+            "change-this-in-production",
+            "your_jwt_secret_key_here_change_this",
+            "your_app_secret_key_here_change_this",
+        }
+
+        if self.secret_key in placeholder_values:
+            object.__setattr__(self, "secret_key", _generate_secret())
+
+        if self.jwt_secret_key in placeholder_values:
+            object.__setattr__(self, "jwt_secret_key", _generate_secret())
+
+        return self
 
     # OAuth Settings
     google_client_id: str = Field(default="", alias="GOOGLE_CLIENT_ID")

@@ -136,17 +136,15 @@ services:
       S3_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
       S3_BUCKET_NAME: storai-booker-images
 
-      # LLM Provider Settings
-      GOOGLE_API_KEY: ${GOOGLE_API_KEY}
-      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
-      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      # LLM Provider Settings (users configure API keys in Settings UI)
+      # These are optional fallbacks for environment-level defaults
       DEFAULT_LLM_PROVIDER: ${DEFAULT_LLM_PROVIDER:-google}
       DEFAULT_TEXT_MODEL: ${DEFAULT_TEXT_MODEL:-gemini-2.5-flash}
       DEFAULT_IMAGE_MODEL: ${DEFAULT_IMAGE_MODEL:-gemini-2.5-flash-image}
 
-      # JWT & Security
-      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-change-this-in-production}
-      SECRET_KEY: ${SECRET_KEY:-change-this-in-production}
+      # JWT & Security (auto-generated if not provided)
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-}
+      SECRET_KEY: ${SECRET_KEY:-}
     depends_on:
       mongodb:
         condition: service_healthy
@@ -202,17 +200,14 @@ services:
       S3_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
       S3_BUCKET_NAME: storai-booker-images
 
-      # LLM Provider Settings
-      GOOGLE_API_KEY: ${GOOGLE_API_KEY}
-      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
-      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      # LLM Provider Settings (users configure API keys in Settings UI)
       DEFAULT_LLM_PROVIDER: ${DEFAULT_LLM_PROVIDER:-google}
       DEFAULT_TEXT_MODEL: ${DEFAULT_TEXT_MODEL:-gemini-2.5-flash}
       DEFAULT_IMAGE_MODEL: ${DEFAULT_IMAGE_MODEL:-gemini-2.5-flash-image}
 
-      # JWT & Security
-      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-change-this-in-production}
-      SECRET_KEY: ${SECRET_KEY:-change-this-in-production}
+      # JWT & Security (auto-generated if not provided)
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-}
+      SECRET_KEY: ${SECRET_KEY:-}
     depends_on:
       mongodb:
         condition: service_healthy

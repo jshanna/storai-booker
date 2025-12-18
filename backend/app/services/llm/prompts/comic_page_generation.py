@@ -22,7 +22,9 @@ class SoundEffectOutput(BaseModel):
     """Structured output for a sound effect."""
 
     text: str = Field(description="Sound effect text (e.g., BOOM!, WHOOSH!, CRACK!)")
-    position: str = Field(description="Position in panel")
+    position: str = Field(
+        description="Position in panel: top-left, top-center, top-right, middle-left, middle-center, middle-right, bottom-left, bottom-center, bottom-right"
+    )
     style: str = Field(description="Style: impact, whoosh, ambient, dramatic")
 
 

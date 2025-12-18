@@ -19,6 +19,39 @@ from app.services.llm.prompts.comic_page_generation import (
     ComicPageGenerationOutput,
 )
 
+# Valid position values for dialogue and sound effects
+VALID_POSITIONS = {
+    "top-left", "top-center", "top-right",
+    "middle-left", "middle-center", "middle-right",
+    "bottom-left", "bottom-center", "bottom-right",
+}
+
+# Map common LLM position mistakes to valid values
+POSITION_ALIASES = {
+    "center": "middle-center",
+    "middle": "middle-center",
+    "top": "top-center",
+    "bottom": "bottom-center",
+    "left": "middle-left",
+    "right": "middle-right",
+    "topleft": "top-left",
+    "topright": "top-right",
+    "bottomleft": "bottom-left",
+    "bottomright": "bottom-right",
+}
+
+
+def normalize_position(position: str) -> str:
+    """Normalize a position string to a valid panel position value."""
+    pos = position.lower().strip()
+    if pos in VALID_POSITIONS:
+        return pos
+    if pos in POSITION_ALIASES:
+        return POSITION_ALIASES[pos]
+    # Default fallback
+    logger.warning(f"Unknown position '{position}', defaulting to 'middle-center'")
+    return "middle-center"
+
 
 class PageGeneratorAgent:
     """
@@ -147,22 +180,22 @@ class PageGeneratorAgent:
             # Convert LLM output to model objects
             panels = []
             for panel_out in comic_output.panels:
-                # Convert dialogue entries
+                # Convert dialogue entries (normalize positions)
                 dialogue = [
                     DialogueEntry(
                         character=d.character,
                         text=d.text,
-                        position=d.position,
+                        position=normalize_position(d.position),
                         style=d.style,
                     )
                     for d in panel_out.dialogue
                 ]
 
-                # Convert sound effects
+                # Convert sound effects (normalize positions)
                 sound_effects = [
                     SoundEffect(
                         text=s.text,
-                        position=s.position,
+                        position=normalize_position(s.position),
                         style=s.style,
                     )
                     for s in panel_out.sound_effects

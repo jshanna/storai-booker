@@ -198,7 +198,7 @@ class PDFExporter(BaseExporter):
         page_number: int,
     ) -> None:
         """
-        Add a comic page with panel grid layout.
+        Add a comic page with panel grid layout that fills the page.
 
         Args:
             elements: List of ReportLab elements to append to
@@ -219,14 +219,23 @@ class PDFExporter(BaseExporter):
         else:
             cols, rows = 3, 3
 
-        # Calculate cell size based on available space
+        # Calculate available space - use almost full page
         page_width = self.page_size[0] - 2 * self.margin
-        page_height = self.page_size[1] - 2 * self.margin - 1.5 * inch  # Leave room for page number
+        page_height = self.page_size[1] - 2 * self.margin - 0.5 * inch  # Small margin for page number
 
-        cell_width = (page_width - (cols - 1) * 0.1 * inch) / cols
-        cell_height = (page_height - (rows - 1) * 0.1 * inch) / rows
+        # Gap between panels
+        gap = 0.08 * inch
 
-        # Create table data with images
+        # Calculate cell dimensions to fill the space
+        total_gap_width = (cols - 1) * gap
+        total_gap_height = (rows - 1) * gap
+        cell_width = (page_width - total_gap_width) / cols
+        cell_height = (page_height - total_gap_height) / rows
+
+        # Padding inside each cell
+        cell_padding = 2
+
+        # Create table data with images - force exact cell dimensions
         table_data = []
         img_index = 0
 
@@ -234,10 +243,10 @@ class PDFExporter(BaseExporter):
             row_data = []
             for col in range(cols):
                 if img_index < panel_count:
-                    img = await self._create_image(
+                    img = await self._create_panel_image(
                         panel_images[img_index],
-                        max_width=cell_width - 0.1 * inch,
-                        max_height=cell_height - 0.1 * inch,
+                        target_width=cell_width - 2 * cell_padding,
+                        target_height=cell_height - 2 * cell_padding,
                     )
                     row_data.append(img if img else "")
                     img_index += 1
@@ -245,7 +254,7 @@ class PDFExporter(BaseExporter):
                     row_data.append("")
             table_data.append(row_data)
 
-        # Create table
+        # Create table with exact dimensions
         table = Table(
             table_data,
             colWidths=[cell_width] * cols,
@@ -255,15 +264,98 @@ class PDFExporter(BaseExporter):
         table.setStyle(TableStyle([
             ("ALIGN", (0, 0), (-1, -1), "CENTER"),
             ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-            ("BOX", (0, 0), (-1, -1), 1, colors.black),
-            ("INNERGRID", (0, 0), (-1, -1), 0.5, colors.gray),
-            ("LEFTPADDING", (0, 0), (-1, -1), 2),
-            ("RIGHTPADDING", (0, 0), (-1, -1), 2),
-            ("TOPPADDING", (0, 0), (-1, -1), 2),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
+            ("BOX", (0, 0), (-1, -1), 2, colors.black),
+            ("INNERGRID", (0, 0), (-1, -1), 1.5, colors.black),
+            ("LEFTPADDING", (0, 0), (-1, -1), cell_padding),
+            ("RIGHTPADDING", (0, 0), (-1, -1), cell_padding),
+            ("TOPPADDING", (0, 0), (-1, -1), cell_padding),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), cell_padding),
+            ("BACKGROUND", (0, 0), (-1, -1), colors.white),
         ]))
 
         elements.append(table)
+
+    async def _create_panel_image(
+        self,
+        img_data: bytes,
+        target_width: float,
+        target_height: float,
+    ) -> Optional[RLImage]:
+        """
+        Create a panel image that fills exact dimensions (crop to fit).
+
+        Args:
+            img_data: Image bytes
+            target_width: Exact width to fill
+            target_height: Exact height to fill
+
+        Returns:
+            ReportLab Image or None
+        """
+        try:
+            from PIL import Image as PILImage
+
+            # Open image
+            img_buffer = io.BytesIO(img_data)
+            pil_img = PILImage.open(img_buffer)
+
+            # Calculate target pixel dimensions (150 DPI)
+            target_width_px = int(target_width / inch * 150)
+            target_height_px = int(target_height / inch * 150)
+
+            # Calculate crop to fill (cover) the target area
+            orig_width, orig_height = pil_img.size
+            orig_ratio = orig_width / orig_height
+            target_ratio = target_width_px / target_height_px
+
+            if orig_ratio > target_ratio:
+                # Image is wider - crop sides
+                new_height = orig_height
+                new_width = int(orig_height * target_ratio)
+                left = (orig_width - new_width) // 2
+                top = 0
+                right = left + new_width
+                bottom = orig_height
+            else:
+                # Image is taller - crop top/bottom
+                new_width = orig_width
+                new_height = int(orig_width / target_ratio)
+                left = 0
+                top = (orig_height - new_height) // 2
+                right = orig_width
+                bottom = top + new_height
+
+            # Crop to aspect ratio
+            pil_img = pil_img.crop((left, top, right, bottom))
+
+            # Resize to target dimensions
+            pil_img = pil_img.resize((target_width_px, target_height_px), PILImage.Resampling.LANCZOS)
+
+            # Convert to RGB if necessary
+            if pil_img.mode in ('RGBA', 'LA', 'P'):
+                background = PILImage.new('RGB', pil_img.size, (255, 255, 255))
+                if pil_img.mode == 'P':
+                    pil_img = pil_img.convert('RGBA')
+                if pil_img.mode == 'RGBA':
+                    background.paste(pil_img, mask=pil_img.split()[-1])
+                else:
+                    background.paste(pil_img)
+                pil_img = background
+
+            # Save as compressed JPEG
+            compressed_buffer = io.BytesIO()
+            pil_img.save(compressed_buffer, format='JPEG', quality=80, optimize=True)
+            compressed_buffer.seek(0)
+
+            # Create ReportLab image with exact dimensions
+            rl_img = RLImage(compressed_buffer, width=target_width, height=target_height)
+            rl_img.hAlign = "CENTER"
+
+            return rl_img
+
+        except Exception as e:
+            logger.error(f"Failed to create panel image: {e}")
+            return None
 
     async def _create_image(
         self,

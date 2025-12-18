@@ -246,9 +246,12 @@ CRITICAL: Ensure all characters look identical to their appearance in the refere
                     # Extract PIL Image
                     pil_image = sdk_image._pil_image
 
+                    # Normalize to exact aspect ratio
+                    normalized_image = self._normalize_aspect_ratio(pil_image, ratio)
+
                     # Convert to PNG bytes
                     image_buffer = BytesIO()
-                    pil_image.save(image_buffer, format='PNG')
+                    normalized_image.save(image_buffer, format='PNG')
                     image_bytes = image_buffer.getvalue()
 
                     logger.info(f"Successfully generated image ({len(image_bytes)} bytes)")
@@ -260,6 +263,54 @@ CRITICAL: Ensure all characters look identical to their appearance in the refere
         except Exception as e:
             logger.error(f"Failed to generate image with Gemini: {e}")
             raise
+
+    def _normalize_aspect_ratio(self, image: PILImage.Image, target_ratio: str) -> PILImage.Image:
+        """
+        Normalize image to exact aspect ratio by center cropping.
+
+        Args:
+            image: PIL Image to normalize
+            target_ratio: Target aspect ratio string (e.g., "16:9", "1:1", "3:4")
+
+        Returns:
+            Cropped PIL Image with exact aspect ratio
+        """
+        # Parse target aspect ratio
+        try:
+            w_ratio, h_ratio = map(int, target_ratio.split(':'))
+            target_aspect = w_ratio / h_ratio
+        except (ValueError, ZeroDivisionError):
+            logger.warning(f"Invalid aspect ratio '{target_ratio}', returning original image")
+            return image
+
+        # Get current dimensions
+        width, height = image.size
+        current_aspect = width / height
+
+        # Check if already correct (within 1% tolerance)
+        if abs(current_aspect - target_aspect) / target_aspect < 0.01:
+            logger.debug(f"Image already at target aspect ratio {target_ratio}")
+            return image
+
+        # Calculate crop dimensions
+        if current_aspect > target_aspect:
+            # Image is wider than target - crop sides
+            new_width = int(height * target_aspect)
+            new_height = height
+            left = (width - new_width) // 2
+            top = 0
+        else:
+            # Image is taller than target - crop top/bottom
+            new_width = width
+            new_height = int(width / target_aspect)
+            left = 0
+            top = (height - new_height) // 2
+
+        # Crop to exact aspect ratio
+        cropped = image.crop((left, top, left + new_width, top + new_height))
+        logger.debug(f"Normalized image from {width}x{height} to {new_width}x{new_height} for ratio {target_ratio}")
+
+        return cropped
 
     def _enhance_prompt_for_children(self, prompt: str) -> str:
         """

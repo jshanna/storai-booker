@@ -1,7 +1,7 @@
 """Pydantic schemas for authentication API endpoints."""
 from datetime import datetime
 from typing import Optional
-from pydantic import BaseModel, EmailStr, Field, field_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 import re
 
 
@@ -24,14 +24,15 @@ class RegisterRequest(BaseModel):
             raise ValueError("Password must contain at least one digit")
         return v
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "email": "user@example.com",
                 "password": "SecurePass123",
                 "full_name": "John Doe",
             }
         }
+    )
 
 
 class LoginRequest(BaseModel):
@@ -40,13 +41,14 @@ class LoginRequest(BaseModel):
     email: EmailStr = Field(..., description="User email address")
     password: str = Field(..., description="User password")
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "email": "user@example.com",
                 "password": "SecurePass123",
             }
         }
+    )
 
 
 class TokenResponse(BaseModel):
@@ -57,8 +59,8 @@ class TokenResponse(BaseModel):
     token_type: str = Field(default="bearer", description="Token type")
     expires_in: int = Field(..., description="Access token expiration in seconds")
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
                 "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
@@ -66,6 +68,7 @@ class TokenResponse(BaseModel):
                 "expires_in": 3600,
             }
         }
+    )
 
 
 class RefreshTokenRequest(BaseModel):
@@ -90,9 +93,9 @@ class UserResponse(BaseModel):
     google_connected: bool = Field(default=False, description="Google account linked")
     github_connected: bool = Field(default=False, description="GitHub account linked")
 
-    class Config:
-        from_attributes = True
-        json_schema_extra = {
+    model_config = ConfigDict(
+        from_attributes=True,
+        json_schema_extra={
             "example": {
                 "id": "507f1f77bcf86cd799439011",
                 "email": "user@example.com",
@@ -106,6 +109,7 @@ class UserResponse(BaseModel):
                 "github_connected": False,
             }
         }
+    )
 
 
 class UpdateProfileRequest(BaseModel):
@@ -114,12 +118,13 @@ class UpdateProfileRequest(BaseModel):
     full_name: Optional[str] = Field(None, max_length=100, description="User's full name")
     avatar_url: Optional[str] = Field(None, description="User's avatar URL")
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "full_name": "Jane Doe",
             }
         }
+    )
 
 
 class ChangePasswordRequest(BaseModel):
@@ -140,13 +145,14 @@ class ChangePasswordRequest(BaseModel):
             raise ValueError("Password must contain at least one digit")
         return v
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "current_password": "OldPass123",
                 "new_password": "NewSecure456",
             }
         }
+    )
 
 
 class ForgotPasswordRequest(BaseModel):
@@ -154,12 +160,13 @@ class ForgotPasswordRequest(BaseModel):
 
     email: EmailStr = Field(..., description="User email address")
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "email": "user@example.com",
             }
         }
+    )
 
 
 class ResetPasswordRequest(BaseModel):
@@ -180,13 +187,14 @@ class ResetPasswordRequest(BaseModel):
             raise ValueError("Password must contain at least one digit")
         return v
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "token": "abc123def456",
                 "new_password": "NewSecure789",
             }
         }
+    )
 
 
 class MessageResponse(BaseModel):
@@ -194,12 +202,13 @@ class MessageResponse(BaseModel):
 
     message: str = Field(..., description="Response message")
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "message": "Operation completed successfully",
             }
         }
+    )
 
 
 class OAuthUrlResponse(BaseModel):
@@ -208,13 +217,14 @@ class OAuthUrlResponse(BaseModel):
     authorization_url: str = Field(..., description="URL to redirect user for OAuth")
     state: str = Field(..., description="State parameter for CSRF protection")
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "authorization_url": "https://accounts.google.com/o/oauth2/v2/auth?...",
                 "state": "abc123xyz789",
             }
         }
+    )
 
 
 class OAuthCallbackRequest(BaseModel):
@@ -223,13 +233,14 @@ class OAuthCallbackRequest(BaseModel):
     code: str = Field(..., description="Authorization code from OAuth provider")
     state: str = Field(..., description="State parameter for CSRF verification")
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "code": "4/0AX4XfWh...",
                 "state": "abc123xyz789",
             }
         }
+    )
 
 
 class OAuthProvidersResponse(BaseModel):
@@ -238,10 +249,11 @@ class OAuthProvidersResponse(BaseModel):
     google: bool = Field(..., description="Whether Google OAuth is configured")
     github: bool = Field(..., description="Whether GitHub OAuth is configured")
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "google": True,
                 "github": True,
             }
         }
+    )

@@ -337,7 +337,7 @@ async def reset_password(request: ResetPasswordRequest):
     from datetime import datetime, timezone
 
     # Find user with matching reset token
-    user = await User.find_one(User.password_reset_token == request.token)
+    user = await User.find_one({"password_reset_token": request.token})
     if not user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -433,7 +433,7 @@ async def google_oauth_callback(request: OAuthCallbackRequest):
         user_info = await oauth_service.exchange_google_code(request.code, redirect_uri)
 
         # Find or create user
-        user = await User.find_one(User.google_id == user_info.provider_id)
+        user = await User.find_one({"google_id": user_info.provider_id})
 
         if not user:
             # Check if email exists (link accounts)
@@ -532,7 +532,7 @@ async def github_oauth_callback(request: OAuthCallbackRequest):
         user_info = await oauth_service.exchange_github_code(request.code, redirect_uri)
 
         # Find or create user
-        user = await User.find_one(User.github_id == user_info.provider_id)
+        user = await User.find_one({"github_id": user_info.provider_id})
 
         if not user:
             # Check if email exists (link accounts)
@@ -612,7 +612,7 @@ async def link_google_account(
         user_info = await oauth_service.exchange_google_code(request.code, redirect_uri)
 
         # Check if this Google account is already linked to another user
-        existing_user = await User.find_one(User.google_id == user_info.provider_id)
+        existing_user = await User.find_one({"google_id": user_info.provider_id})
         if existing_user:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
@@ -676,7 +676,7 @@ async def link_github_account(
         user_info = await oauth_service.exchange_github_code(request.code, redirect_uri)
 
         # Check if this GitHub account is already linked to another user
-        existing_user = await User.find_one(User.github_id == user_info.provider_id)
+        existing_user = await User.find_one({"github_id": user_info.provider_id})
         if existing_user:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,

@@ -2,7 +2,7 @@
 from datetime import datetime, timezone
 from typing import Optional
 from beanie import Document, Indexed
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 from pymongo import IndexModel, ASCENDING
 
 
@@ -19,7 +19,7 @@ class User(Document):
     """User document model."""
 
     # Core fields
-    email: Indexed(EmailStr, unique=True)
+    email: Indexed(str, unique=True) = Field(..., description="User email address")  # type: ignore
     email_verified: bool = Field(default=False)
     password_hash: Optional[str] = Field(default=None, description="Null for OAuth-only users")
 
@@ -58,10 +58,8 @@ class User(Document):
             IndexModel([("created_at", ASCENDING)]),
         ]
 
-    class Config:
-        """Pydantic config."""
-
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "email": "user@example.com",
                 "email_verified": False,
@@ -75,6 +73,7 @@ class User(Document):
                 },
             }
         }
+    )
 
     def update_timestamp(self) -> None:
         """Update the updated_at timestamp."""

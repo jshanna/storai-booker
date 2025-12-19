@@ -1,7 +1,7 @@
 """Application settings MongoDB document model."""
 from typing import Optional
 from beanie import Document
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from pymongo import IndexModel
 
 
@@ -94,10 +94,8 @@ class AppSettings(Document):
             IndexModel([("user_id", 1)], unique=True),  # Unique index on user_id
         ]
 
-    class Config:
-        """Pydantic config."""
-
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "user_id": "default",
                 "age_range": {"min": 3, "max": 12, "enforce": True},
@@ -123,3 +121,4 @@ class AppSettings(Document):
                 },
             }
         }
+    )

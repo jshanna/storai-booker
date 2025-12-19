@@ -1,7 +1,7 @@
 """Pydantic schemas for export API."""
 
 from enum import Enum
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class ExportFormat(str, Enum):
@@ -18,14 +18,13 @@ class ExportRequest(BaseModel):
 
     format: ExportFormat
 
-    class Config:
-        """Pydantic config."""
-
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "format": "pdf",
             }
         }
+    )
 
 
 class ExportResponse(BaseModel):
@@ -37,10 +36,8 @@ class ExportResponse(BaseModel):
     size: int
     content_type: str
 
-    class Config:
-        """Pydantic config."""
-
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "story_id": "507f1f77bcf86cd799439011",
                 "format": "pdf",
@@ -49,3 +46,4 @@ class ExportResponse(BaseModel):
                 "content_type": "application/pdf",
             }
         }
+    )

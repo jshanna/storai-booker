@@ -1,6 +1,6 @@
 """Pydantic schemas for template API endpoints."""
 from typing import List, Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.models.template import TemplateGenerationInputs
 
@@ -19,8 +19,7 @@ class TemplateResponse(BaseModel):
     icon: Optional[str] = None
     cover_image_url: Optional[str] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class TemplateListResponse(BaseModel):

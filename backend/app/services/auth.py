@@ -233,7 +233,7 @@ class AuthService:
         Returns:
             User if credentials are valid, None otherwise
         """
-        user = await User.find_one(User.email == email)
+        user = await User.find_one({"email": email})
         if not user:
             logger.debug(f"User not found: {email}")
             return None
@@ -263,7 +263,7 @@ class AuthService:
 
     async def get_user_by_email(self, email: str) -> Optional[User]:
         """Get a user by their email."""
-        return await User.find_one(User.email == email)
+        return await User.find_one({"email": email})
 
     async def create_user(
         self,

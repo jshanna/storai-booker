@@ -1,7 +1,7 @@
 """Pydantic schemas for story API endpoints."""
 from datetime import datetime
 from typing import List, Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.models.storybook import GenerationInputs, CharacterDescription, StoryMetadata, Page
 
@@ -43,8 +43,8 @@ class StoryCreateRequest(BaseModel):
     title: str = Field(..., min_length=1, max_length=200, description="Story title")
     generation_inputs: GenerationInputs
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "title": "The Magical Forest Adventure",
                 "generation_inputs": {
@@ -58,6 +58,7 @@ class StoryCreateRequest(BaseModel):
                 },
             }
         }
+    )
 
 
 class PageResponse(BaseModel):
@@ -90,8 +91,7 @@ class StoryResponse(BaseModel):
     error_message: Optional[str] = None
     cover_image_url: Optional[str] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class StoryListResponse(BaseModel):

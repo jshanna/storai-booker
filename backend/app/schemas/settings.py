@@ -1,6 +1,6 @@
 """Pydantic schemas for settings API endpoints."""
 from typing import Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.models.settings import (
     AgeRangeSettings,
@@ -21,8 +21,8 @@ class SettingsUpdateRequest(BaseModel):
     fallback_llm_provider: Optional[LLMProviderConfig] = None
     defaults: Optional[DefaultSettings] = None
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "age_range": {"min": 5, "max": 12, "enforce": True},
                 "primary_llm_provider": {
@@ -33,6 +33,7 @@ class SettingsUpdateRequest(BaseModel):
                 },
             }
         }
+    )
 
 
 class SettingsResponse(BaseModel):
@@ -47,5 +48,4 @@ class SettingsResponse(BaseModel):
     fallback_llm_provider: Optional[LLMProviderConfig] = None
     defaults: DefaultSettings
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

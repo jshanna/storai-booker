@@ -1,5 +1,5 @@
 /**
- * Comic page renderer with panel grid.
+ * Comic page renderer with support for both whole-page and per-panel images.
  * Note: Speech bubbles and sound effects are rendered directly in the generated images.
  */
 
@@ -12,6 +12,63 @@ interface ComicPageRendererProps {
   page: Page;
   isFlipping?: boolean;
   flipDirection?: 'forward' | 'backward';
+}
+
+/**
+ * Renders a whole-page comic image (all panels in one image).
+ * Used when page.illustration_url is set.
+ */
+function WholePageRenderer({
+  page,
+  isFlipping,
+  flipDirection,
+}: ComicPageRendererProps) {
+  const [imageLoaded, setImageLoaded] = React.useState(false);
+  const [imageError, setImageError] = React.useState(false);
+
+  React.useEffect(() => {
+    if (page.illustration_url) {
+      setImageLoaded(false);
+      setImageError(false);
+    }
+  }, [page.illustration_url]);
+
+  return (
+    <div
+      className={`
+        relative w-full h-full bg-background rounded-lg overflow-hidden shadow-2xl
+        ${isFlipping ? (flipDirection === 'forward' ? 'animate-page-flip-forward' : 'animate-page-flip-backward') : ''}
+      `}
+    >
+      {/* Whole Page Image */}
+      <div className="w-full h-full">
+        {!imageLoaded && !imageError && (
+          <Skeleton className="absolute inset-0" />
+        )}
+        {imageError ? (
+          <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground h-full">
+            <ImageOff className="h-8 w-8" />
+            <p className="text-sm">Image failed to load</p>
+          </div>
+        ) : (
+          <img
+            src={page.illustration_url || undefined}
+            alt={`Comic page ${page.page_number}`}
+            className={`w-full h-full object-contain transition-opacity ${
+              imageLoaded ? 'opacity-100' : 'opacity-0'
+            }`}
+            onLoad={() => setImageLoaded(true)}
+            onError={() => setImageError(true)}
+          />
+        )}
+      </div>
+
+      {/* Page Number */}
+      <div className="absolute bottom-2 right-2 px-2 py-1 bg-background/80 backdrop-blur rounded-full text-xs text-muted-foreground">
+        {page.page_number}
+      </div>
+    </div>
+  );
 }
 
 /**
@@ -136,6 +193,19 @@ export function ComicPageRenderer({
   isFlipping = false,
   flipDirection = 'forward',
 }: ComicPageRendererProps) {
+  // Check if this is a whole-page image (new generation mode)
+  // If page.illustration_url is set, render the whole page as a single image
+  if (page.illustration_url) {
+    return (
+      <WholePageRenderer
+        page={page}
+        isFlipping={isFlipping}
+        flipDirection={flipDirection}
+      />
+    );
+  }
+
+  // Fall back to per-panel grid rendering (legacy mode)
   const panels = page.panels || [];
   const panelCount = panels.length;
 

@@ -75,6 +75,32 @@ class Settings(BaseSettings):
     default_max_concurrent_pages: int = Field(default=5, alias="DEFAULT_MAX_CONCURRENT_PAGES")
     nsfw_filter_enabled: bool = Field(default=True, alias="NSFW_FILTER_ENABLED")
 
+    # Critic Agent Settings (Whole-Page Comic Generation)
+    critic_quality_threshold: float = Field(
+        default=6.5, alias="CRITIC_QUALITY_THRESHOLD",
+        description="Minimum weighted score (1-10) to accept a page"
+    )
+    critic_max_revisions: int = Field(
+        default=3, alias="CRITIC_MAX_REVISIONS",
+        description="Maximum revision attempts per page"
+    )
+    critic_composition_weight: float = Field(
+        default=0.35, alias="CRITIC_COMPOSITION_WEIGHT",
+        description="Weight for composition critic score"
+    )
+    critic_story_weight: float = Field(
+        default=0.35, alias="CRITIC_STORY_WEIGHT",
+        description="Weight for story critic score"
+    )
+    critic_technical_weight: float = Field(
+        default=0.30, alias="CRITIC_TECHNICAL_WEIGHT",
+        description="Weight for technical critic score"
+    )
+    whole_page_generation: bool = Field(
+        default=True, alias="WHOLE_PAGE_GENERATION",
+        description="Generate comic pages as single images instead of per-panel"
+    )
+
     # CORS Settings
     cors_origins: List[str] = Field(
         default=["http://localhost:3000", "http://localhost:5173"], alias="CORS_ORIGINS"

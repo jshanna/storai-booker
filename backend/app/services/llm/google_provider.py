@@ -365,3 +365,166 @@ User Request: {user_message}"""
         except Exception as e:
             logger.error(f"Gemini generation with system message failed: {e}")
             raise
+
+    async def generate_vision_structured(
+        self,
+        prompt: str,
+        image_bytes: bytes,
+        response_model: Type[BaseModel],
+        **kwargs
+    ) -> BaseModel:
+        """
+        Generate structured output from text + image input (multimodal).
+
+        Uses Gemini's vision capabilities to analyze an image and return
+        structured feedback matching the provided Pydantic model.
+
+        Args:
+            prompt: Text instructions for analysis
+            image_bytes: Image data as bytes (PNG/JPEG)
+            response_model: Pydantic model class for output structure
+            **kwargs: Additional parameters
+
+        Returns:
+            Instance of response_model with analysis results
+
+        Raises:
+            ValidationError: If output doesn't match schema
+            Exception: If generation fails
+        """
+        from io import BytesIO
+        from PIL import Image as PILImage
+
+        last_error = None
+
+        for attempt in range(self.max_retries):
+            try:
+                client = self.get_client()
+
+                # Convert image bytes to PIL Image
+                pil_image = PILImage.open(BytesIO(image_bytes))
+
+                # Get JSON schema from Pydantic model
+                schema = response_model.model_json_schema()
+
+                # Build enhanced prompt with schema instructions
+                schema_str = json.dumps(schema, indent=2)
+                enhanced_prompt = f"""{prompt}
+
+Please analyze the image and generate a JSON response matching this exact schema:
+
+{schema_str}
+
+Important:
+- Output only valid JSON, no additional text
+- All required fields must be present
+- Scores should be integers from 1-10
+- Provide specific, actionable feedback
+- Do not wrap the JSON in markdown code blocks"""
+
+                # Build generation config
+                config = GenerateContentConfig(
+                    temperature=self.temperature,
+                    max_output_tokens=8192,
+                )
+
+                # Generate with multimodal input [image, text]
+                logger.debug(
+                    f"Generating vision-structured output for {response_model.__name__} "
+                    f"(attempt {attempt + 1}/{self.max_retries})"
+                )
+
+                response = await asyncio.to_thread(
+                    client.models.generate_content,
+                    model=self.model,
+                    contents=[pil_image, enhanced_prompt],
+                    config=config,
+                )
+
+                # Extract JSON
+                if not response.candidates or len(response.candidates) == 0:
+                    if hasattr(response, 'prompt_feedback'):
+                        feedback = response.prompt_feedback
+                        logger.warning(f"Gemini blocked vision request. Prompt feedback: {feedback}")
+                        raise ValueError(f"Content blocked by Gemini safety filters: {feedback}")
+                    raise ValueError("No candidates returned from Gemini API")
+
+                candidate = response.candidates[0]
+                if not candidate.content or not candidate.content.parts:
+                    raise ValueError("No content in response from Gemini API")
+
+                json_text = candidate.content.parts[0].text.strip()
+
+                # Remove markdown code blocks if present
+                if json_text.startswith("```json"):
+                    json_text = json_text[7:]
+                if json_text.startswith("```"):
+                    json_text = json_text[3:]
+                if json_text.endswith("```"):
+                    json_text = json_text[:-3]
+
+                json_text = json_text.strip()
+
+                # Sanitize control characters in JSON strings
+                def sanitize_json_string(match):
+                    s = match.group(0)
+                    s = s.replace('\n', '\\n')
+                    s = s.replace('\r', '\\r')
+                    s = s.replace('\t', '\\t')
+                    s = re.sub(r'[\x00-\x08\x0B\x0C\x0E-\x1F]', '', s)
+                    return s
+
+                json_text = re.sub(r'"([^"\\]*(\\.[^"\\]*)*)"', sanitize_json_string, json_text)
+
+                # Parse JSON with repair fallback
+                data = None
+                try:
+                    data = json.loads(json_text)
+                except json.JSONDecodeError as e:
+                    logger.warning(f"Initial JSON parse failed: {e}")
+                    repaired_json = repair_truncated_json(json_text)
+                    try:
+                        data = json.loads(repaired_json)
+                        logger.info("Successfully repaired truncated JSON")
+                    except json.JSONDecodeError as repair_error:
+                        logger.error(f"JSON repair failed: {repair_error}")
+                        logger.error(f"Raw response (first 500 chars): {json_text[:500]}")
+                        raise ValueError(f"Invalid JSON from Gemini vision: {e}")
+
+                # Validate with Pydantic
+                try:
+                    result = response_model.model_validate(data)
+                    logger.debug(f"Successfully parsed vision output {response_model.__name__}")
+                    return result
+
+                except ValidationError as e:
+                    logger.error(f"Pydantic validation failed: {e}")
+                    logger.error(f"Data: {json.dumps(data, indent=2)[:500]}")
+                    raise
+
+            except ValueError as e:
+                last_error = e
+                error_msg = str(e).lower()
+
+                # Don't retry safety blocks
+                if "blocked" in error_msg or "safety" in error_msg:
+                    raise
+
+                if attempt < self.max_retries - 1:
+                    wait_time = 2 ** attempt
+                    logger.warning(
+                        f"Vision-structured generation failed (attempt {attempt + 1}), "
+                        f"retrying in {wait_time}s: {e}"
+                    )
+                    await asyncio.sleep(wait_time)
+                else:
+                    logger.error(f"Vision-structured generation failed after {self.max_retries} attempts")
+                    raise
+
+            except Exception as e:
+                logger.error(f"Gemini vision-structured generation failed: {e}")
+                raise
+
+        if last_error:
+            raise last_error
+        raise RuntimeError("Vision-structured generation failed unexpectedly")

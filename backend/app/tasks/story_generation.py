@@ -14,11 +14,22 @@ from app.services.llm.provider_factory import LLMProviderFactory
 from app.services.agents.coordinator import CoordinatorAgent
 from app.services.agents.page_generator import PageGeneratorAgent
 from app.services.agents.validator import ValidatorAgent
+from app.services.agents.critics import (
+    CompositionCriticAgent,
+    StoryCriticAgent,
+    TechnicalCriticAgent,
+)
 from app.services.image.provider_factory import ImageProviderFactory
 from app.services.image.base import BaseImageProvider
+from app.services.llm.base import BaseLLMProvider
 from app.services.storage import storage_service
 from app.services.cache import cache_service
 from app.services.content_safety import ContentSafetyService
+from app.services.llm.prompts.comic_whole_page import (
+    build_whole_page_image_prompt,
+    extract_page_script,
+)
+from app.schemas.critic import aggregate_critic_reviews
 import httpx
 
 
@@ -487,17 +498,35 @@ async def _generate_story_workflow(story_id: str, task) -> dict:
 
         # Generate illustrations - different logic for comics vs storybooks
         if is_comic and page.panels:
-            # Generate images for each panel
-            logger.info(f"Generating {len(page.panels)} panel illustrations for page {page_number}")
-            await _generate_comic_panel_illustrations(
-                page=page,
-                page_index=len(story.pages) - 1,
-                story=story,
-                image_provider=image_provider,
-                safety_settings=app_settings.safety_settings,
-                character_reference=character_reference_bytes,
-                max_retries=settings.image_max_retries,
-            )
+            # Check if whole-page generation is enabled
+            if settings.whole_page_generation:
+                # Generate entire page as single image with critic review
+                logger.info(
+                    f"Generating whole-page comic image for page {page_number} "
+                    f"({len(page.panels)} panels)"
+                )
+                await _generate_comic_page_with_critics(
+                    page=page,
+                    page_index=len(story.pages) - 1,
+                    story=story,
+                    metadata=metadata,
+                    image_provider=image_provider,
+                    llm_provider=llm_provider,
+                    safety_settings=app_settings.safety_settings,
+                    character_reference=character_reference_bytes,
+                )
+            else:
+                # Generate images for each panel separately (legacy mode)
+                logger.info(f"Generating {len(page.panels)} panel illustrations for page {page_number}")
+                await _generate_comic_panel_illustrations(
+                    page=page,
+                    page_index=len(story.pages) - 1,
+                    story=story,
+                    image_provider=image_provider,
+                    safety_settings=app_settings.safety_settings,
+                    character_reference=character_reference_bytes,
+                    max_retries=settings.image_max_retries,
+                )
         else:
             # Generate single illustration for storybook page
             try:
@@ -1077,6 +1106,232 @@ async def _generate_page_illustration(
             await asyncio.sleep(wait_time)
 
     return None
+
+
+async def _generate_comic_page_with_critics(
+    page: Page,
+    page_index: int,
+    story: Storybook,
+    metadata: StoryMetadata,
+    image_provider: BaseImageProvider,
+    llm_provider: BaseLLMProvider,
+    safety_settings=None,
+    character_reference: Optional[List[bytes]] = None,
+    max_revisions: int = None,
+    quality_threshold: float = None,
+) -> None:
+    """
+    Generate a whole comic page with critic review loop.
+
+    This generates the entire comic page as a single image (all panels,
+    dialogue, effects) and has three critic agents review it. If the
+    page doesn't meet quality threshold, it regenerates with critic feedback.
+
+    Args:
+        page: Page model with panels/script data
+        page_index: Index in story.pages
+        story: Parent storybook
+        metadata: Story metadata for context
+        image_provider: Image generation provider
+        llm_provider: LLM provider for critics
+        safety_settings: Image safety settings
+        character_reference: Character sheet images for consistency
+        max_revisions: Maximum regeneration attempts (default from settings)
+        quality_threshold: Minimum weighted score to accept (default from settings)
+    """
+    # Use settings defaults if not provided
+    max_revisions = max_revisions or settings.critic_max_revisions
+    quality_threshold = quality_threshold or settings.critic_quality_threshold
+
+    # Critic weights from settings
+    critic_weights = {
+        "composition": settings.critic_composition_weight,
+        "story": settings.critic_story_weight,
+        "technical": settings.critic_technical_weight,
+    }
+
+    logger.info(
+        f"Generating whole-page comic for page {page.page_number} "
+        f"(max_revisions={max_revisions}, threshold={quality_threshold})"
+    )
+
+    # Initialize critics
+    composition_critic = CompositionCriticAgent(llm_provider)
+    story_critic = StoryCriticAgent(llm_provider)
+    technical_critic = TechnicalCriticAgent(llm_provider)
+
+    # Build safety kwargs
+    safety_kwargs = {}
+    if safety_settings:
+        safety_kwargs = {
+            "safety_threshold": safety_settings.safety_threshold,
+            "allow_adult_imagery": safety_settings.allow_adult_imagery,
+            "bypass_safety_filters": safety_settings.bypass_safety_filters,
+        }
+
+    # Extract story context for critics
+    story_context = {
+        "title": story.title,
+        "target_age": story.generation_inputs.audience_age,
+        "illustration_style": story.generation_inputs.illustration_style,
+        "page_number": page.page_number,
+        "total_pages": story.generation_inputs.page_count,
+    }
+
+    # Extract page script for critics
+    page_script = extract_page_script(page)
+
+    critic_feedback = None
+    best_image_bytes = None
+    best_score = 0.0
+
+    for attempt in range(max_revisions):
+        try:
+            # 1. Build whole-page prompt
+            page_prompt = build_whole_page_image_prompt(
+                page=page,
+                metadata=metadata,
+                inputs=story.generation_inputs,
+                critic_feedback=critic_feedback,
+            )
+
+            # 2. Generate complete page image
+            logger.info(
+                f"Generating whole-page image for page {page.page_number} "
+                f"(attempt {attempt + 1}/{max_revisions})"
+            )
+
+            page_bytes = await image_provider.generate_image(
+                prompt=page_prompt,
+                aspect_ratio="3:4",  # Portrait comic page
+                reference_images=character_reference,
+                **safety_kwargs,
+            )
+
+            logger.info(
+                f"Generated page {page.page_number} image ({len(page_bytes)} bytes)"
+            )
+
+            # 3. Run critics in parallel
+            logger.info(f"Running 3 critics in parallel for page {page.page_number}")
+
+            composition_review, story_review, technical_review = await asyncio.gather(
+                composition_critic.review(page_bytes, page_script, story_context),
+                story_critic.review(page_bytes, page_script, story_context),
+                technical_critic.review(page_bytes, page_script, story_context),
+            )
+
+            # 4. Aggregate reviews
+            aggregated = aggregate_critic_reviews(
+                composition=composition_review,
+                story=story_review,
+                technical=technical_review,
+                composition_weight=critic_weights["composition"],
+                story_weight=critic_weights["story"],
+                technical_weight=critic_weights["technical"],
+                quality_threshold=quality_threshold,
+            )
+
+            logger.info(
+                f"Page {page.page_number} attempt {attempt + 1}: "
+                f"weighted_score={aggregated.weighted_score:.2f} "
+                f"(comp={composition_review.score}, story={story_review.score}, "
+                f"tech={technical_review.score}) "
+                f"pass={aggregated.passes_threshold}"
+            )
+
+            # Track best result
+            if aggregated.weighted_score > best_score:
+                best_score = aggregated.weighted_score
+                best_image_bytes = page_bytes
+
+            # 5. Check if passes threshold
+            if aggregated.passes_threshold:
+                logger.info(
+                    f"Page {page.page_number} passed quality threshold "
+                    f"({aggregated.weighted_score:.2f} >= {quality_threshold})"
+                )
+                break
+
+            # 6. Prepare for regeneration if more attempts remain
+            if attempt < max_revisions - 1:
+                critic_feedback = aggregated.revision_prompt
+                if not critic_feedback:
+                    # Build feedback from issues
+                    critic_feedback = "; ".join(aggregated.priority_improvements[:3])
+
+                logger.info(
+                    f"Page {page.page_number} below threshold, regenerating with feedback: "
+                    f"{critic_feedback[:100]}..."
+                )
+            else:
+                logger.warning(
+                    f"Page {page.page_number} did not pass after {max_revisions} attempts "
+                    f"(best score: {best_score:.2f}), accepting best effort"
+                )
+
+        except Exception as e:
+            logger.error(
+                f"Error generating whole-page for page {page.page_number} "
+                f"(attempt {attempt + 1}): {e}"
+            )
+
+            if attempt >= max_revisions - 1:
+                # Fall back to per-panel generation if whole-page fails completely
+                logger.warning(
+                    f"Whole-page generation failed for page {page.page_number}, "
+                    f"falling back to per-panel generation"
+                )
+                await _generate_comic_panel_illustrations(
+                    page=page,
+                    page_index=page_index,
+                    story=story,
+                    image_provider=image_provider,
+                    safety_settings=safety_settings,
+                    character_reference=character_reference,
+                    max_retries=settings.image_max_retries,
+                )
+                return
+
+            # Wait before retry
+            wait_time = 2 ** attempt
+            logger.info(f"Retrying in {wait_time} seconds...")
+            await asyncio.sleep(wait_time)
+
+    # 7. Save final image (best result or last successful)
+    final_bytes = best_image_bytes or page_bytes
+
+    if final_bytes:
+        try:
+            filename = f"page_{page.page_number}_whole.png"
+            object_key = await storage_service.upload_from_bytes(
+                story_id=str(story.id),
+                filename=filename,
+                data=final_bytes,
+                content_type="image/png",
+            )
+
+            logger.info(f"Uploaded whole-page image: {object_key}")
+
+            # Get signed URL (30 days)
+            page_url = await storage_service.get_signed_url(
+                object_key=object_key,
+                expiration=86400 * 30,
+            )
+
+            # Update page with illustration URL
+            page.illustration_url = page_url
+            story.pages[page_index] = page
+            await story.save()
+
+            logger.info(
+                f"Page {page.page_number} whole-page generation complete: {page_url}"
+            )
+
+        except Exception as e:
+            logger.error(f"Failed to save page {page.page_number} image: {e}")
+    else:
+        logger.error(f"No image generated for page {page.page_number}")
 
 
 async def _generate_comic_panel_illustrations(

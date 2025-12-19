@@ -92,6 +92,47 @@ class BaseLLMProvider(ABC):
         """
         pass
 
+    @abstractmethod
+    async def generate_vision_structured(
+        self,
+        prompt: str,
+        image_bytes: bytes,
+        response_model: Type[BaseModel],
+        **kwargs
+    ) -> BaseModel:
+        """
+        Generate structured output from text + image input (multimodal).
+
+        Uses vision capabilities to analyze an image and return
+        structured feedback matching the provided Pydantic model.
+
+        Args:
+            prompt: Text instructions for analysis
+            image_bytes: Image data as bytes (PNG/JPEG)
+            response_model: Pydantic model class for output structure
+            **kwargs: Additional provider-specific parameters
+
+        Returns:
+            Instance of response_model with analysis results
+
+        Raises:
+            ValidationError: If output doesn't match schema
+            Exception: If generation fails
+
+        Example:
+            class ImageAnalysis(BaseModel):
+                score: int
+                feedback: str
+
+            result = await provider.generate_vision_structured(
+                "Analyze this comic page for composition...",
+                image_bytes,
+                ImageAnalysis
+            )
+            print(result.score)
+        """
+        pass
+
     def __repr__(self) -> str:
         """String representation of provider."""
         return f"{self.__class__.__name__}(model='{self.model}', temperature={self.temperature})"

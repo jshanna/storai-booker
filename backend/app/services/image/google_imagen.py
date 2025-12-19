@@ -266,14 +266,17 @@ CRITICAL: Ensure all characters look identical to their appearance in the refere
 
     def _normalize_aspect_ratio(self, image: PILImage.Image, target_ratio: str) -> PILImage.Image:
         """
-        Normalize image to exact aspect ratio by center cropping.
+        Normalize image to target aspect ratio with minimal cropping.
+
+        Uses a generous tolerance to avoid cropping off important content like
+        text overlays. Only crops if the aspect ratio is significantly off.
 
         Args:
             image: PIL Image to normalize
             target_ratio: Target aspect ratio string (e.g., "16:9", "1:1", "3:4")
 
         Returns:
-            Cropped PIL Image with exact aspect ratio
+            Cropped PIL Image with normalized aspect ratio
         """
         # Parse target aspect ratio
         try:
@@ -287,28 +290,40 @@ CRITICAL: Ensure all characters look identical to their appearance in the refere
         width, height = image.size
         current_aspect = width / height
 
-        # Check if already correct (within 1% tolerance)
-        if abs(current_aspect - target_aspect) / target_aspect < 0.01:
-            logger.debug(f"Image already at target aspect ratio {target_ratio}")
+        # Use generous 10% tolerance to avoid cropping text/important content
+        # Gemini usually produces reasonably close aspect ratios
+        if abs(current_aspect - target_aspect) / target_aspect < 0.10:
+            logger.debug(f"Image within tolerance of target aspect ratio {target_ratio}")
             return image
 
-        # Calculate crop dimensions
+        # Only do minimal cropping - just enough to get closer to target
+        # Don't crop more than 5% of any dimension to preserve content
+        max_crop_ratio = 0.05
+
         if current_aspect > target_aspect:
-            # Image is wider than target - crop sides
-            new_width = int(height * target_aspect)
+            # Image is wider than target - crop sides (minimally)
+            ideal_width = int(height * target_aspect)
+            crop_amount = width - ideal_width
+            max_crop = int(width * max_crop_ratio)
+            actual_crop = min(crop_amount, max_crop * 2)  # max_crop from each side
+            new_width = width - actual_crop
             new_height = height
-            left = (width - new_width) // 2
+            left = actual_crop // 2
             top = 0
         else:
-            # Image is taller than target - crop top/bottom
+            # Image is taller than target - crop top/bottom (minimally)
+            ideal_height = int(width / target_aspect)
+            crop_amount = height - ideal_height
+            max_crop = int(height * max_crop_ratio)
+            actual_crop = min(crop_amount, max_crop * 2)
             new_width = width
-            new_height = int(width / target_aspect)
+            new_height = height - actual_crop
             left = 0
-            top = (height - new_height) // 2
+            top = actual_crop // 2
 
-        # Crop to exact aspect ratio
+        # Apply minimal crop
         cropped = image.crop((left, top, left + new_width, top + new_height))
-        logger.debug(f"Normalized image from {width}x{height} to {new_width}x{new_height} for ratio {target_ratio}")
+        logger.debug(f"Minimally cropped image from {width}x{height} to {new_width}x{new_height} for ratio {target_ratio}")
 
         return cropped
 

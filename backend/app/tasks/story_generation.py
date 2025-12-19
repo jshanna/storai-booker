@@ -1107,12 +1107,15 @@ async def _generate_comic_panel_illustrations(
     panels_per_page = len(page.panels)
     logger.info(f"Generating illustrations for {panels_per_page} panels on page {page.page_number}")
 
-    # Determine aspect ratio based on panel count and layout
-    panel_aspect_ratio = _get_panel_aspect_ratio(panels_per_page, page.layout)
+    # Get aspect ratios for each panel position based on layout
+    panel_aspect_ratios = get_panel_aspect_ratios(panels_per_page, page.layout)
+    logger.debug(f"Panel aspect ratios for layout '{page.layout}': {panel_aspect_ratios}")
 
     for panel_idx, panel in enumerate(page.panels):
         panel_num = panel.panel_number
-        logger.info(f"Generating panel {panel_num} illustration (page {page.page_number})")
+        # Get the aspect ratio for this specific panel position
+        panel_aspect_ratio = panel_aspect_ratios[panel_idx] if panel_idx < len(panel_aspect_ratios) else "1:1"
+        logger.info(f"Generating panel {panel_num} illustration (page {page.page_number}, ratio: {panel_aspect_ratio})")
 
         for attempt in range(max_retries):
             try:
@@ -1194,30 +1197,91 @@ async def _generate_comic_panel_illustrations(
                     await asyncio.sleep(wait_time)
 
 
-def _get_panel_aspect_ratio(panel_count: int, layout: Optional[str]) -> str:
+def get_panel_aspect_ratios(panel_count: int, layout: Optional[str]) -> list[str]:
     """
-    Get appropriate aspect ratio for panels based on count and layout.
+    Get aspect ratios for each panel position based on layout.
+
+    Different layouts have panels of different shapes. This returns the correct
+    aspect ratio for each panel position so images are generated to fit properly.
 
     Args:
-        panel_count: Number of panels per page
-        layout: Layout string (e.g., "2x2", "3x1")
+        panel_count: Number of panels on the page
+        layout: Layout string (e.g., "2x2", "1-2", "2-3")
 
     Returns:
-        Aspect ratio string (e.g., "1:1", "16:9")
+        List of aspect ratio strings, one per panel position
     """
-    # Default aspect ratios based on common layouts
-    if panel_count == 1:
-        return "4:3"  # Full page panel
-    elif panel_count == 2:
-        return "1:1"  # Square panels for side-by-side
-    elif panel_count == 3:
-        if layout and "3x1" in layout:
-            return "1:1"  # Wide panels for horizontal strip
-        return "1:1"  # Default square
-    elif panel_count in [4, 6, 9]:
-        return "1:1"  # Square panels for grid layouts
-    else:
-        return "1:1"  # Default to square
+    layout = layout or ""
+    layout_lower = layout.lower().replace(" ", "")
+
+    # Full page - use portrait ratio
+    if panel_count == 1 or layout_lower == "1x1":
+        return ["3:4"]  # Portrait full page
+
+    # 2 panels
+    if panel_count == 2:
+        if layout_lower in ["1x2", "stacked"]:
+            # Stacked vertically - wide panels
+            return ["16:9", "16:9"]
+        else:  # 2x1 side by side (default)
+            # Side by side - tall panels
+            return ["3:4", "3:4"]
+
+    # 3 panels
+    if panel_count == 3:
+        if layout_lower in ["1-2", "1+2"]:
+            # 1 wide on top, 2 square on bottom
+            return ["16:9", "1:1", "1:1"]
+        elif layout_lower in ["2-1", "2+1"]:
+            # 2 square on top, 1 wide on bottom
+            return ["1:1", "1:1", "16:9"]
+        elif layout_lower == "3x1":
+            # 3 horizontal
+            return ["3:4", "3:4", "3:4"]
+        elif layout_lower == "1x3":
+            # 3 stacked
+            return ["16:9", "16:9", "16:9"]
+        else:
+            # Default: 1 top, 2 bottom
+            return ["16:9", "1:1", "1:1"]
+
+    # 4 panels - 2x2 grid
+    if panel_count == 4:
+        # All equal squares in 2x2
+        return ["1:1", "1:1", "1:1", "1:1"]
+
+    # 5 panels
+    if panel_count == 5:
+        if layout_lower in ["2-3", "2+3"]:
+            # 2 on top (wider), 3 on bottom (narrower)
+            return ["4:3", "4:3", "1:1", "1:1", "1:1"]
+        elif layout_lower in ["3-2", "3+2"]:
+            # 3 on top, 2 on bottom
+            return ["1:1", "1:1", "1:1", "4:3", "4:3"]
+        else:
+            # Default: 2 top, 3 bottom
+            return ["4:3", "4:3", "1:1", "1:1", "1:1"]
+
+    # 6 panels - 3x2 or 2x3
+    if panel_count == 6:
+        if layout_lower in ["2x3", "stacked"]:
+            # 2 columns, 3 rows - wider panels
+            return ["4:3", "4:3", "4:3", "4:3", "4:3", "4:3"]
+        else:  # 3x2 default
+            # 3 columns, 2 rows - taller panels
+            return ["3:4", "3:4", "3:4", "3:4", "3:4", "3:4"]
+
+    # 7+ panels - default to square
+    return ["1:1"] * panel_count
+
+
+def _get_panel_aspect_ratio(panel_count: int, layout: Optional[str]) -> str:
+    """
+    Legacy function - get single aspect ratio for all panels.
+    Kept for backwards compatibility but prefer get_panel_aspect_ratios().
+    """
+    ratios = get_panel_aspect_ratios(panel_count, layout)
+    return ratios[0] if ratios else "1:1"
 
 
 def _build_panel_prompt(panel, inputs) -> str:

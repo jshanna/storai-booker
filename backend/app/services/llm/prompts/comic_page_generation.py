@@ -92,9 +92,6 @@ def build_comic_page_generation_prompt(
     Returns:
         Formatted prompt for comic page generation
     """
-    panels_per_page = inputs.panels_per_page or 4
-    layout = get_layout_for_panel_count(panels_per_page)
-
     # Build character descriptions section
     character_info = _format_character_info(metadata.character_descriptions)
 
@@ -107,9 +104,14 @@ def build_comic_page_generation_prompt(
     prompt = f"""You are creating page {page_number} of {inputs.page_count} for a children's comic book.
 
 **Comic Format:**
-- This page has {panels_per_page} panels in a {layout} layout
+- YOU decide how many panels this page needs (1-6 panels) based on the story beat
+- Choose a layout that fits the pacing:
+  - 1 panel: Full-page dramatic moment or splash page
+  - 2 panels: Side-by-side comparison or before/after
+  - 3 panels: 1 large on top, 2 below (1-2) - good for establishing then action
+  - 4 panels: 2x2 grid - balanced storytelling
+  - 5-6 panels: Fast-paced action sequences
 - Each panel needs its own illustration prompt and can have dialogue/sound effects
-- Comics tell stories through sequential art with speech bubbles and action
 
 **Story Context:**
 - Overall Story: {metadata.story_outline}
@@ -122,7 +124,12 @@ def build_comic_page_generation_prompt(
 {page_outline}
 
 **Your Task:**
-Create {panels_per_page} panels that break down this page's story beat into sequential comic panels.
+Decide how many panels this page needs (1-6) based on the story beat, then create those panels.
+
+Choose the number of panels based on pacing:
+- Dramatic/emotional moments → fewer, larger panels (1-2)
+- Dialogue exchanges → medium panels (3-4)
+- Action sequences → more, smaller panels (4-6)
 
 For EACH panel, provide:
 
@@ -151,6 +158,14 @@ For EACH panel, provide:
    - Position in the action
    - Choose style (impact, whoosh, ambient, dramatic)
 
+**Layout Options** (choose based on panel count):
+- 1 panel: "1x1" (full page)
+- 2 panels: "2x1" (side by side) or "1x2" (stacked)
+- 3 panels: "1-2" (1 top, 2 bottom) or "2-1" (2 top, 1 bottom)
+- 4 panels: "2x2" (grid)
+- 5 panels: "2-3" (2 top, 3 bottom)
+- 6 panels: "3x2" (grid)
+
 **Panel Flow Guidelines:**
 - Panel 1: Establish the scene or continue from previous page
 - Middle panels: Build action and tension
@@ -161,7 +176,7 @@ For EACH panel, provide:
 - Keep dialogue simple and clear
 - Action should be exciting but not scary for young readers
 
-Generate all {panels_per_page} panels with varied pacing - mix dialogue-heavy and action-focused panels."""
+Generate panels with varied pacing - mix dialogue-heavy and action-focused panels."""
 
     return prompt
 

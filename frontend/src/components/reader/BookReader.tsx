@@ -9,6 +9,7 @@ import { ComicPageRenderer } from './ComicPageRenderer';
 import { PageNavigation } from './PageNavigation';
 import type { Story, Page } from '@/types/api';
 import { cn } from '@/lib/utils';
+import { useAnnouncer } from '@/lib/contexts/AnnouncerContext';
 
 interface BookReaderProps {
   story: Story;
@@ -20,6 +21,7 @@ export function BookReader({ story }: BookReaderProps) {
   const [flipDirection, setFlipDirection] = useState<'forward' | 'backward'>('forward');
   const [isFullscreen, setIsFullscreen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const { announce } = useAnnouncer();
 
   // Get current page (cover or regular page)
   const pages = story.cover_image_url
@@ -53,9 +55,12 @@ export function BookReader({ story }: BookReaderProps) {
       setTimeout(() => {
         setCurrentPageIndex(pageIndex);
         setIsFlipping(false);
+        // Announce page change to screen readers
+        const pageLabel = pageIndex === 0 && story.cover_image_url ? 'Cover' : `Page ${pageIndex + 1}`;
+        announce(`${pageLabel} of ${totalPages}`);
       }, 300);
     },
-    [currentPageIndex, totalPages]
+    [currentPageIndex, totalPages, announce, story.cover_image_url]
   );
 
   const nextPage = useCallback(() => {
@@ -172,6 +177,9 @@ export function BookReader({ story }: BookReaderProps) {
   return (
     <div
       ref={containerRef}
+      role="region"
+      aria-label={`Book reader: ${story.title}`}
+      aria-keyshortcuts="ArrowLeft ArrowRight Escape"
       className={cn(
         'flex flex-col bg-muted/30',
         isFullscreen ? 'h-screen' : 'min-h-[600px] rounded-lg border'

@@ -37,8 +37,9 @@ export function PageNavigation({
         onClick={onPrevious}
         disabled={!canGoPrevious}
         className="gap-2"
+        aria-label="Previous page"
       >
-        <ChevronLeft className="h-5 w-5" />
+        <ChevronLeft className="h-5 w-5" aria-hidden="true" />
         <span className="hidden sm:inline">Previous</span>
       </Button>
 
@@ -78,6 +79,7 @@ export function PageNavigation({
                     : 'bg-muted-foreground/30 hover:bg-muted-foreground/50'
                 )}
                 aria-label={`Go to page ${pageNum}`}
+                aria-current={isCurrent ? 'page' : undefined}
               />
             );
           })}
@@ -96,11 +98,16 @@ export function PageNavigation({
           aria-label={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
         >
           {isFullscreen ? (
-            <Minimize className="h-4 w-4" />
+            <Minimize className="h-4 w-4" aria-hidden="true" />
           ) : (
-            <Maximize className="h-4 w-4" />
+            <Maximize className="h-4 w-4" aria-hidden="true" />
           )}
         </Button>
+
+        {/* Keyboard shortcut hint - hidden on mobile */}
+        <span className="hidden lg:inline text-xs text-muted-foreground">
+          Use arrow keys
+        </span>
       </div>
 
       {/* Next Button */}
@@ -110,9 +117,10 @@ export function PageNavigation({
         onClick={onNext}
         disabled={!canGoNext}
         className="gap-2"
+        aria-label="Next page"
       >
         <span className="hidden sm:inline">Next</span>
-        <ChevronRight className="h-5 w-5" />
+        <ChevronRight className="h-5 w-5" aria-hidden="true" />
       </Button>
     </div>
   );

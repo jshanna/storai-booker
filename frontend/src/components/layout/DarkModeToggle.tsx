@@ -14,13 +14,14 @@ export function DarkModeToggle() {
       variant="ghost"
       size="icon"
       onClick={toggleDarkMode}
-      aria-label="Toggle dark mode"
+      aria-label={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+      aria-pressed={darkMode}
       className="h-9 w-9"
     >
       {darkMode ? (
-        <Sun className="h-5 w-5" />
+        <Sun className="h-5 w-5" aria-hidden="true" />
       ) : (
-        <Moon className="h-5 w-5" />
+        <Moon className="h-5 w-5" aria-hidden="true" />
       )}
     </Button>
   );

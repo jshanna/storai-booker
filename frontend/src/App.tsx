@@ -10,6 +10,8 @@ import { ErrorBoundary, FullPageSpinner } from '@/components/shared';
 import { ProtectedRoute } from '@/components/auth';
 import { Toaster } from '@/components/ui/toaster';
 import { useAuthInit } from '@/lib/hooks/useAuth';
+import { useRouteAnnouncer } from '@/lib/hooks/useRouteAnnouncer';
+import { AnnouncerProvider } from '@/lib/contexts/AnnouncerContext';
 import { HomePage } from '@/pages';
 
 // Lazy load pages for code splitting
@@ -35,11 +37,13 @@ const queryClient = new QueryClient({
 });
 
 /**
- * App content component with auth initialization.
+ * App content component with auth initialization and route announcements.
  */
 function AppContent() {
   // Initialize auth on app mount
   useAuthInit();
+  // Announce route changes to screen readers
+  useRouteAnnouncer();
 
   return (
     <Layout>
@@ -106,7 +110,9 @@ function App() {
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
         <BrowserRouter>
-          <AppContent />
+          <AnnouncerProvider>
+            <AppContent />
+          </AnnouncerProvider>
         </BrowserRouter>
         <Toaster />
       </QueryClientProvider>

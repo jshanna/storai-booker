@@ -43,21 +43,23 @@ export function Header() {
         </Link>
 
         {/* Navigation */}
-        <nav className="flex items-center space-x-3 sm:space-x-6 flex-1">
-          {navigation.map((item) => (
-            <Link
-              key={item.href}
-              to={item.href}
-              className={cn(
-                'text-xs sm:text-sm font-medium transition-colors hover:text-primary whitespace-nowrap',
-                location.pathname === item.href
-                  ? 'text-foreground'
-                  : 'text-foreground/60'
-              )}
-            >
-              {item.name}
-            </Link>
-          ))}
+        <nav aria-label="Main navigation" className="flex items-center space-x-3 sm:space-x-6 flex-1">
+          {navigation.map((item) => {
+            const isActive = location.pathname === item.href;
+            return (
+              <Link
+                key={item.href}
+                to={item.href}
+                aria-current={isActive ? 'page' : undefined}
+                className={cn(
+                  'text-xs sm:text-sm font-medium transition-colors hover:text-primary whitespace-nowrap',
+                  isActive ? 'text-foreground' : 'text-foreground/60'
+                )}
+              >
+                {item.name}
+              </Link>
+            );
+          })}
         </nav>
 
         {/* Right side actions */}
@@ -71,7 +73,7 @@ export function Header() {
           ) : isAuthenticated && user ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" className="flex items-center gap-2">
+                <Button variant="ghost" size="sm" className="flex items-center gap-2" aria-label="User menu">
                   {user.avatar_url ? (
                     <img
                       src={user.avatar_url}

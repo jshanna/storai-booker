@@ -9,3 +9,4 @@ export * from './useDebounce';
 export * from './usePagination';
 export * from './useAuth';
 export * from './useTemplates';
+export * from './useRouteAnnouncer';

@@ -13,6 +13,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { createStoryGenerationSchema, StoryGenerationFormData } from '@/lib/schemas/story';
 import { useCreateStory, useSettings } from '@/lib/hooks';
+import { useAnnouncer } from '@/lib/contexts/AnnouncerContext';
 import { FullPageSpinner } from '@/components/shared';
 import { FormProgress, Step } from './FormProgress';
 import { BasicInfoStep } from './BasicInfoStep';
@@ -39,6 +40,7 @@ export function GenerationForm({ initialValues, onBack }: GenerationFormProps) {
   const navigate = useNavigate();
   const { mutate: createStory, isPending } = useCreateStory();
   const { data: settings, isLoading: settingsLoading } = useSettings();
+  const { announce } = useAnnouncer();
 
   // Create schema based on settings age range
   const schema = useMemo(() => {
@@ -103,14 +105,20 @@ export function GenerationForm({ initialValues, onBack }: GenerationFormProps) {
     e?.preventDefault();
     const isValid = await validateCurrentStep();
     if (isValid && currentStep < STEPS.length) {
-      setCurrentStep(currentStep + 1);
+      const nextStep = currentStep + 1;
+      setCurrentStep(nextStep);
+      announce(`Step ${nextStep} of ${STEPS.length}: ${STEPS[nextStep - 1].name}`);
+    } else if (!isValid) {
+      announce('Please fix the form errors before continuing', 'assertive');
     }
   };
 
   const handlePrevious = (e?: React.MouseEvent<HTMLButtonElement>) => {
     e?.preventDefault();
     if (currentStep > 1) {
-      setCurrentStep(currentStep - 1);
+      const prevStep = currentStep - 1;
+      setCurrentStep(prevStep);
+      announce(`Step ${prevStep} of ${STEPS.length}: ${STEPS[prevStep - 1].name}`);
     }
   };
 

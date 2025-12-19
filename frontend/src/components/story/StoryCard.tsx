@@ -50,12 +50,12 @@ export function StoryCard({ story, onDelete }: StoryCardProps) {
         {story.cover_image_url ? (
           <img
             src={story.cover_image_url}
-            alt={story.title}
+            alt={`Cover image for "${story.title}"`}
             className="w-full h-full object-cover"
           />
         ) : (
           <div className="flex items-center justify-center h-full">
-            <BookOpen className="h-16 w-16 text-muted-foreground" />
+            <BookOpen className="h-16 w-16 text-muted-foreground" aria-hidden="true" />
           </div>
         )}
 
@@ -79,8 +79,13 @@ export function StoryCard({ story, onDelete }: StoryCardProps) {
           {/* Actions Dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8">
-                <MoreVertical className="h-4 w-4" />
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                aria-label={`Actions for ${story.title}`}
+              >
+                <MoreVertical className="h-4 w-4" aria-hidden="true" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
@@ -133,8 +138,8 @@ export function StoryCard({ story, onDelete }: StoryCardProps) {
 
         {/* Progress Bar for Generating Stories */}
         {isGenerating && (
-          <div className="mt-4 space-y-2">
-            <Progress value={progress} />
+          <div className="mt-4 space-y-2" role="status" aria-live="polite">
+            <Progress value={progress} aria-label={`Generation progress: ${Math.round(progress)}%`} />
             <p className="text-xs text-muted-foreground text-center">
               Generating... {Math.round(progress)}%
             </p>

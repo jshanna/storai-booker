@@ -27,6 +27,7 @@ export function FormProgress({ steps, currentStep }: FormProgressProps) {
           return (
             <li
               key={step.id}
+              aria-current={isCurrent ? 'step' : undefined}
               className={cn(
                 'relative flex items-center',
                 stepIdx !== steps.length - 1 ? 'flex-1' : 'flex-none'

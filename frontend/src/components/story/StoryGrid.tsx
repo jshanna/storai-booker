@@ -40,15 +40,16 @@ export function StoryGrid({ stories, isLoading, onDelete }: StoryGridProps) {
   return (
     <div className="space-y-4">
       {/* View Toggle */}
-      <div className="flex justify-end">
+      <div className="flex justify-end" role="group" aria-label="View options">
         <div className="flex gap-1 border rounded-lg p-1">
           <Button
             variant={libraryView === 'grid' ? 'secondary' : 'ghost'}
             size="sm"
             onClick={() => setLibraryView('grid')}
             className="h-8 w-8 p-0"
+            aria-pressed={libraryView === 'grid'}
           >
-            <Grid3x3 className="h-4 w-4" />
+            <Grid3x3 className="h-4 w-4" aria-hidden="true" />
             <span className="sr-only">Grid view</span>
           </Button>
           <Button
@@ -56,8 +57,9 @@ export function StoryGrid({ stories, isLoading, onDelete }: StoryGridProps) {
             size="sm"
             onClick={() => setLibraryView('list')}
             className="h-8 w-8 p-0"
+            aria-pressed={libraryView === 'list'}
           >
-            <List className="h-4 w-4" />
+            <List className="h-4 w-4" aria-hidden="true" />
             <span className="sr-only">List view</span>
           </Button>
         </div>

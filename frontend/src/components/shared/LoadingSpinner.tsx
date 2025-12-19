@@ -19,8 +19,13 @@ const sizeMap = {
 
 export function LoadingSpinner({ size = 'md', className, text }: LoadingSpinnerProps) {
   return (
-    <div className={cn('flex flex-col items-center justify-center gap-2', className)}>
-      <Loader2 className={cn('animate-spin text-primary', sizeMap[size])} />
+    <div
+      className={cn('flex flex-col items-center justify-center gap-2', className)}
+      role="status"
+      aria-live="polite"
+      aria-label={text || 'Loading'}
+    >
+      <Loader2 className={cn('animate-spin text-primary', sizeMap[size])} aria-hidden="true" />
       {text && <p className="text-sm text-muted-foreground">{text}</p>}
     </div>
   );

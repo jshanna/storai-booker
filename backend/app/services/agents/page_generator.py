@@ -449,7 +449,7 @@ Please correct these issues in your new generation."""
 
             # Convert LLM output to model objects
             panels = []
-            for panel_out in comic_output.panels:
+            for idx, panel_out in enumerate(comic_output.panels):
                 # Convert dialogue entries (normalize positions)
                 dialogue = [
                     DialogueEntry(
@@ -471,8 +471,15 @@ Please correct these issues in your new generation."""
                     for s in panel_out.sound_effects
                 ]
 
+                # Use sequential panel number (1-indexed) regardless of LLM output
+                sequential_panel_num = idx + 1
+                if panel_out.panel_number != sequential_panel_num:
+                    logger.debug(
+                        f"Correcting panel number from {panel_out.panel_number} to {sequential_panel_num}"
+                    )
+
                 panel = Panel(
-                    panel_number=panel_out.panel_number,
+                    panel_number=sequential_panel_num,
                     illustration_prompt=panel_out.illustration_prompt,
                     illustration_url=None,
                     dialogue=dialogue,

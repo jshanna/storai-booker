@@ -126,15 +126,6 @@ class TestCoordinatorAgent:
         assert result.page_outlines[0] == "Page 1"
         assert "Continue the story" in result.page_outlines[1]
 
-    @pytest.mark.asyncio
-    async def test_expand_characters_not_implemented(self, coordinator):
-        """Test that expand_characters raises NotImplementedError."""
-        with pytest.raises(NotImplementedError):
-            await coordinator.expand_characters(
-                ["Character 1", "Character 2"],
-                "Fantasy story"
-            )
-
 
 class TestPageGeneratorAgent:
     """Tests for PageGeneratorAgent."""
@@ -234,6 +225,7 @@ class TestValidatorAgent:
     def sample_storybook(self, init_test_db, sample_generation_inputs, sample_story_metadata):
         """Create sample storybook."""
         storybook = Storybook(
+            user_id="test-user-123",
             title="Test Story",
             generation_inputs=sample_generation_inputs,
             metadata=sample_story_metadata,

@@ -34,8 +34,13 @@ export function StoryCard({ story, onDelete }: StoryCardProps) {
   const isComplete = story.status === 'complete';
 
   // Calculate progress for generating stories
+  // Comics use illustration_url (whole-page) or panels, storybooks use text
+  const isComic = story.generation_inputs.format === 'comic';
+  const completedPages = story.pages.filter(p =>
+    isComic ? (p.illustration_url || (p.panels && p.panels.length > 0)) : p.text
+  ).length;
   const progress = isGenerating && story.pages.length > 0
-    ? (story.pages.filter(p => p.text).length / story.generation_inputs.page_count) * 100
+    ? (completedPages / story.generation_inputs.page_count) * 100
     : 0;
 
   return (

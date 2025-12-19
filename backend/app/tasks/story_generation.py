@@ -1627,15 +1627,6 @@ def get_panel_aspect_ratios(panel_count: int, layout: Optional[str]) -> list[str
     return ["1:1"] * panel_count
 
 
-def _get_panel_aspect_ratio(panel_count: int, layout: Optional[str]) -> str:
-    """
-    Legacy function - get single aspect ratio for all panels.
-    Kept for backwards compatibility but prefer get_panel_aspect_ratios().
-    """
-    ratios = get_panel_aspect_ratios(panel_count, layout)
-    return ratios[0] if ratios else "1:1"
-
-
 def _build_panel_prompt(panel, inputs) -> str:
     """
     Build panel illustration prompt with dialogue and text integrated.

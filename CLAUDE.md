@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 StorAI-Booker is an AI-powered storybook and comic book generation application that uses LLMs to create personalized, illustrated stories for children. The application features a Python FastAPI backend with MongoDB for data persistence, and a React TypeScript frontend.
 
-**Current Status:** Phase 1 Complete (Core Backend API). The project is on branch `phase-1/core-backend-api` with a functional REST API for story management and settings.
+**Current Status:** Phase 6 (Advanced Features). The project has a fully functional story and comic generation pipeline with AI-powered image generation, critic review system, user authentication, and export capabilities.
 
 ## ⚠️ CRITICAL SECURITY WARNING
 
@@ -87,22 +87,37 @@ docker compose down -v  # Also remove volumes
 
 The core feature is a coordinated multi-agent system for generating stories:
 
-1. **Coordinating Agent**: Orchestrates the generation process
-   - Expands character descriptions
+1. **Coordinating Agent** (`backend/app/services/agents/coordinator.py`): Orchestrates the generation process
    - Creates story outlines and page breakdowns
-   - Manages panel layouts for comic books
+   - Generates character descriptions from user input
+   - Defines illustration style guides
    - Validates coherence and age-appropriateness
 
-2. **Page Agents**: Work in parallel to generate individual pages
+2. **Page Generator Agent** (`backend/app/services/agents/page_generator.py`): Generates individual pages
    - Traditional storybooks: Generate narrative text + illustration prompts
-   - Comic books: Generate panel-by-panel content (dialogue, action, speech bubbles, sound effects)
+   - Comic books: Generate panel scripts (dialogue, captions, sound effects, layout)
 
-3. **Assembly & Validation**: Ensures consistency across all pages
-   - Character consistency checks
-   - Narrative flow validation
-   - Error detection and regeneration (with retry limits)
+3. **Validator Agent** (`backend/app/services/agents/validator.py`): Ensures quality
+   - Validates story coherence
+   - Checks age-appropriateness
+   - Triggers regeneration if issues found
 
-This system is not yet implemented (Phase 2) but shapes the data models and API design.
+4. **Critic System** (`backend/app/services/agents/critics/`): Reviews generated comic pages
+   - **CompositionCritic** (35% weight): Reviews panel layout, visual balance, reading flow
+   - **StoryCritic** (35% weight): Reviews narrative coherence, character consistency
+   - **TechnicalCritic** (30% weight): Reviews image quality, age-appropriateness
+   - Uses vision-based multimodal LLM analysis
+   - Pages below 6.5/10 threshold are regenerated (max 3 revisions)
+
+### Comic Book Generation Flow
+
+Comics use **whole-page generation** (not per-panel):
+1. Page Generator creates panel scripts with dialogue/captions/effects
+2. Whole-page image prompt is built from all panel content
+3. Gemini 2.5 Flash generates complete comic page as single image
+4. Three critics review the generated image in parallel
+5. If score < 6.5, regenerate with critic feedback
+6. Final image stored with dialogue/effects baked in
 
 ### Backend Architecture (Python + FastAPI)
 
@@ -110,15 +125,20 @@ This system is not yet implemented (Phase 2) but shapes the data models and API 
 - FastAPI for async REST API
 - MongoDB with Beanie ODM (async Pydantic-based)
 - Motor for async MongoDB driver
-- Celery + Redis for job queuing (future)
+- Celery + Redis for background job processing
 - MinIO/S3 for image storage
-- LangChain for LLM orchestration (future)
+- Google Gemini for text generation and image generation
 
 **Key Directories:**
 - `backend/app/api/`: API route handlers
 - `backend/app/models/`: Beanie ODM models (MongoDB documents)
 - `backend/app/schemas/`: Pydantic schemas for request/response validation
-- `backend/app/services/`: Business logic (storage, agents, LLM)
+- `backend/app/services/`: Business logic (storage, agents, LLM, export)
+- `backend/app/services/agents/`: Multi-agent story generation system
+- `backend/app/services/agents/critics/`: Vision-based critic agents for quality review
+- `backend/app/services/llm/`: LLM provider implementations and prompts
+- `backend/app/services/export/`: PDF, EPUB, CBZ export services
+- `backend/app/tasks/`: Celery background tasks (story generation)
 - `backend/app/core/`: Configuration and database initialization
 - `backend/app/middleware/`: Error handlers and middleware
 
@@ -171,14 +191,20 @@ This system is not yet implemented (Phase 2) but shapes the data models and API 
 
 ### LLM Provider Support
 
-The application supports multiple LLM providers (implementation in Phase 2):
-- **OpenAI**: GPT-4 for text, DALL-E 3 for images
-- **Anthropic**: Claude for text generation
-- **Google**: Gemini for text, Gemini 2.5 Flash Image for image generation (see `docs/GEMINI_MODELS.md`)
-  - Image Generation: https://ai.google.dev/gemini-api/docs/image-generation
-  - Consistent Character Imagery: https://github.com/GoogleCloudPlatform/generative-ai/blob/main/gemini/use-cases/media-generation/consistent_imagery_generation.ipynb
+Currently using **Google Gemini** for all AI operations:
+- **Text Generation**: Gemini 2.0 Flash for story planning, page generation, validation
+- **Image Generation**: Gemini 2.5 Flash Image for illustrations and comic pages
+- **Vision Analysis**: Gemini 2.0 Flash for critic review of generated images
 
-Provider configuration stored in Settings model with API keys encrypted at rest.
+Key features:
+- Character consistency using reference images passed to image generation
+- Whole-page comic generation with dialogue/effects baked into images
+- Vision-based multimodal critics for quality review
+- Age-appropriate content prompts throughout the pipeline
+
+See `docs/GEMINI_MODELS.md` for detailed model documentation.
+
+Provider configuration stored in Settings model. API keys should be set via environment variables.
 
 ## Development Workflow
 
@@ -207,8 +233,8 @@ The project follows a 6-phase development plan (see `specs/development-plan.md`)
 - **Phase 2**: LLM Agent System (Complete)
 - **Phase 3**: Image Generation (Complete)
 - **Phase 4**: Frontend Development (Complete)
-- **Phase 5**: Production Ready (In Progress - Security Hardening Complete)
-- **Phase 6**: Advanced Features
+- **Phase 5**: Production Ready (Complete)
+- **Phase 6**: Advanced Features (In Progress - Auth, Export, Comics, Templates complete)
 
 ### Current Project Status
 
@@ -218,21 +244,24 @@ The project follows a 6-phase development plan (see `specs/development-plan.md`)
 - ✅ Phase 2: LLM Agent System (multi-agent story generation with Google Gemini)
 - ✅ Phase 3: Image Generation (Gemini 2.5 Flash Image with character consistency)
 - ✅ Phase 4: Frontend Development (React UI with generation, library, reader, settings)
-- ✅ Phase 5.1: Testing (50% coverage, integration tests)
-- ✅ Phase 5.2: Performance Optimization (caching, lazy loading, indexes)
-- ✅ Phase 5.3: Security Hardening (rate limiting, input sanitization, security headers)
-- 🚧 Phase 5.4: Error Handling & Logging (next)
-- 🚧 Phase 5.5: Documentation
-- 🚧 Phase 5.6: CI/CD Pipeline
+- ✅ Phase 5: Production Ready (testing, optimization, security, auth)
+- ✅ Phase 6.1: User Authentication (JWT, OAuth with GitHub/Google)
+- ✅ Phase 6.2: Export System (PDF, EPUB, CBZ formats)
+- ✅ Phase 6.3: Comic Book Format (whole-page generation with critic review)
+- ✅ Phase 6.4: Story Templates
+- 🚧 Phase 6.5: Advanced Features (in progress)
 
 **Key Features Working:**
-- Full story generation pipeline (text + images)
-- Character consistency across pages using reference images
-- Age-appropriate content filtering
-- Story validation and regeneration
+- Full storybook generation pipeline (text + per-page illustrations)
+- Comic book generation with whole-page images (dialogue/effects baked in)
+- Three-critic review system for comic page quality
+- Character consistency using reference images
+- Age-appropriate content filtering throughout pipeline
+- User authentication (local accounts + OAuth)
+- Export to PDF, EPUB, and CBZ formats
+- Story templates for quick generation
 - Production deployment with Docker Compose
 - MinIO storage with nginx proxy for images
-- Comprehensive security measures
 
 ### Working with MongoDB
 
@@ -292,24 +321,33 @@ Backend configuration is loaded from `backend/.env`:
 
 ## Important Constraints
 
-### Story Generation (Phase 2+)
+### Story Generation
 
-When implementing the LLM agent system:
-- Use LangChain for agent orchestration
-- Implement runaway prevention (hard limits on LLM calls)
-- Retry limit default: 3 attempts per page
-- Maximum concurrent page generations: 5 (configurable)
-- Age-appropriate content validation is mandatory
-- NSFW filter enabled by default
+Generation uses Celery background tasks (`backend/app/tasks/story_generation.py`):
+- Celery task timeout: 60 minutes soft limit, 75 minutes hard limit
+- Retry limit: 3 attempts per page (configurable via `critic_max_revisions`)
+- Pages are generated sequentially (character reference images need prior pages)
+- Progress updates sent via Celery task state updates
 
-### Comic Book Rendering (Phase 3+)
+### Comic Book Generation
 
-For comic book panel composition:
-- Use Pillow (PIL) for image manipulation in Python backend
-- Panel layouts: grid-based (2x2, 3x1, etc.) or custom
-- Speech bubbles: SVG generation with cairosvg for rasterization
-- Text overlay: PIL ImageDraw with custom fonts
-- Final composition: Combine panels with borders/gutters into single page image
+Comics use whole-page generation (not per-panel composition):
+- Gemini 2.5 Flash generates complete comic pages as single images
+- Dialogue bubbles, captions, and sound effects are baked into the image
+- Panel layouts are described in the prompt (e.g., "2x2 grid", "3x1 strip")
+- Three critics review each page using vision analysis
+- Quality threshold: 6.5/10 weighted score (configurable via `critic_quality_threshold`)
+- Max revisions: 3 (configurable via `critic_max_revisions`)
+
+Config settings in `backend/app/core/config.py`:
+```python
+whole_page_generation: bool = True  # Use whole-page vs per-panel
+critic_quality_threshold: float = 6.5
+critic_max_revisions: int = 3
+critic_composition_weight: float = 0.35
+critic_story_weight: float = 0.35
+critic_technical_weight: float = 0.30
+```
 
 ### Content Safety
 
@@ -390,12 +428,11 @@ app_settings = await get_settings()
 
 ## Known Limitations
 
-- Story generation currently returns mock data (Phase 1 API skeleton)
-- Image generation not implemented yet (Phase 3)
-- No user authentication system (Phase 6)
-- No real-time WebSocket updates yet (Phase 4)
-- Comic book panel composition not implemented (Phase 3)
-- Celery workers not active (Phase 2)
+- No real-time WebSocket updates (progress shown via polling)
+- Comic generation can take 10-20+ minutes for longer stories
+- Character consistency relies on reference images (first page generates character sheets)
+- Export PDFs may have varying quality depending on source image resolution
+- No collaborative editing or sharing features yet
 
 ## Development Tips
 

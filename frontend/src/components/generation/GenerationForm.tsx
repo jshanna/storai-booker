@@ -85,7 +85,7 @@ export function GenerationForm({ initialValues, onBack }: GenerationFormProps) {
         fieldsToValidate = ['audience_age', 'topic', 'audience_gender'];
         break;
       case 2:
-        fieldsToValidate = ['setting', 'format', 'page_count', 'panels_per_page'];
+        fieldsToValidate = ['setting', 'format', 'page_count'];
         break;
       case 3:
         fieldsToValidate = ['characters'];

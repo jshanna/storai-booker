@@ -14,7 +14,6 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Slider } from '@/components/ui/slider';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { StoryGenerationFormData } from '@/lib/schemas/story';
@@ -22,51 +21,6 @@ import { cn } from '@/lib/utils';
 
 interface StoryDetailsStepProps {
   form: UseFormReturn<StoryGenerationFormData>;
-}
-
-/**
- * Visual preview of panel layout based on panel count.
- */
-function PanelLayoutPreview({ panelCount }: { panelCount: number }) {
-  const getGridClasses = (count: number): string => {
-    switch (count) {
-      case 1:
-        return 'grid-cols-1 grid-rows-1';
-      case 2:
-        return 'grid-cols-2 grid-rows-1';
-      case 3:
-        return 'grid-cols-2 grid-rows-2';
-      case 4:
-        return 'grid-cols-2 grid-rows-2';
-      case 6:
-        return 'grid-cols-3 grid-rows-2';
-      case 9:
-        return 'grid-cols-3 grid-rows-3';
-      default:
-        return 'grid-cols-2 grid-rows-2';
-    }
-  };
-
-  // For special layouts like 3 panels, we need custom rendering
-  if (panelCount === 3) {
-    return (
-      <div className="w-24 h-32 border rounded bg-muted/30">
-        <div className="w-full h-1/2 border-b bg-muted/50" />
-        <div className="flex h-1/2">
-          <div className="w-1/2 border-r bg-muted/50" />
-          <div className="w-1/2 bg-muted/50" />
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className={cn('w-24 h-32 border rounded bg-muted/30 grid gap-0.5 p-0.5', getGridClasses(panelCount))}>
-      {Array.from({ length: panelCount }).map((_, i) => (
-        <div key={i} className="bg-muted/50 rounded-sm" />
-      ))}
-    </div>
-  );
 }
 
 export function StoryDetailsStep({ form }: StoryDetailsStepProps) {
@@ -187,47 +141,22 @@ export function StoryDetailsStep({ form }: StoryDetailsStepProps) {
       />
 
       {isComic && (
-        <FormField
-          control={form.control}
-          name="panels_per_page"
-          render={({ field }) => {
-            const panelCount = field.value || 4;
-            return (
-              <FormItem>
-                <FormLabel>Panels Per Page</FormLabel>
-                <div className="flex gap-6 items-start">
-                  <div className="flex-1 space-y-4">
-                    <FormControl>
-                      <div className="space-y-2">
-                        <div className="flex justify-between">
-                          <span className="text-sm text-muted-foreground">1</span>
-                          <span className="text-lg font-bold">{panelCount}</span>
-                          <span className="text-sm text-muted-foreground">9</span>
-                        </div>
-                        <Slider
-                          value={[panelCount]}
-                          onValueChange={(values: number[]) => field.onChange(values[0])}
-                          min={1}
-                          max={9}
-                          step={1}
-                          className="w-full"
-                        />
-                      </div>
-                    </FormControl>
-                    <FormDescription>
-                      More panels = more images per page (longer generation time)
-                    </FormDescription>
-                  </div>
-                  <div className="flex-shrink-0">
-                    <p className="text-xs text-muted-foreground mb-2 text-center">Preview</p>
-                    <PanelLayoutPreview panelCount={panelCount} />
-                  </div>
-                </div>
-                <FormMessage />
-              </FormItem>
-            );
-          }}
-        />
+        <div className="rounded-lg border bg-muted/50 p-4">
+          <div className="flex items-start gap-3">
+            <div className="flex-shrink-0 mt-0.5">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5 text-muted-foreground">
+                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div>
+              <p className="text-sm font-medium">Dynamic Panel Layout</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                Each page will have 1-6 panels based on story pacing. Dramatic moments get fewer,
+                larger panels while action sequences get more panels.
+              </p>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

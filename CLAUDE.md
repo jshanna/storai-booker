@@ -149,6 +149,11 @@ Comics use **whole-page generation** (not per-panel):
 - Storage service uses boto3 for S3-compatible object storage (MinIO locally)
 - Error handling uses FastAPI exception handlers with structured responses
 
+**Pydantic v2 Compatibility:**
+- Use `model_config = ConfigDict(...)` instead of `class Config:` (deprecated)
+- For Beanie ODM queries, use dict syntax: `User.find_one({"email": email})` not `User.find_one(User.email == email)`
+- Indexed fields: `field: Indexed(str) = Field(..., description="...")  # type: ignore`
+
 ### Data Models
 
 **Storybook Document** (`backend/app/models/storybook.py`):

@@ -21,22 +21,28 @@ def event_loop():
 
 
 @pytest.fixture(scope="function")
-async def db_client():
-    """Create a test database client."""
-    client = AsyncIOMotorClient("mongodb://localhost:27017")
-    yield client
-    # Cleanup: drop test database
-    await client.drop_database("test_storai_booker")
-    client.close()
-
-
-@pytest.fixture(scope="function")
-async def init_test_db(db_client):
+async def init_test_db():
     """Initialize Beanie with test database."""
+    # Create a new client for each test to avoid connection issues
+    client = AsyncIOMotorClient("mongodb://localhost:27017")
+    database = client["test_storai_booker"]
+
     await init_beanie(
-        database=db_client["test_storai_booker"],
+        database=database,
         document_models=[Storybook, AppSettings, User],
     )
+
+    yield client
+
+    # Cleanup: clear collections and close connection
+    try:
+        await Storybook.delete_all()
+        await AppSettings.delete_all()
+        await User.delete_all()
+    except Exception:
+        pass  # Ignore cleanup errors
+    finally:
+        client.close()
 
 
 @pytest.fixture(scope="function")

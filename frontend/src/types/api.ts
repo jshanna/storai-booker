@@ -120,6 +120,45 @@ export interface Story {
   status: StoryStatus;
   error_message?: string | null;
   cover_image_url?: string | null;
+  // Sharing fields
+  is_shared?: boolean;
+  share_token?: string | null;
+  shared_at?: string | null;
+}
+
+// ============================================================================
+// Sharing & Comments Types
+// ============================================================================
+
+export interface Comment {
+  id: string;
+  story_id: string;
+  user_id: string;
+  author_name: string;
+  author_avatar_url?: string | null;
+  text: string;
+  created_at: string;
+  updated_at: string;
+  is_edited: boolean;
+}
+
+export interface CommentListResponse {
+  comments: Comment[];
+  total: number;
+  page: number;
+  page_size: number;
+}
+
+export interface ShareResponse {
+  story_id: string;
+  is_shared: boolean;
+  share_token?: string | null;
+  share_url?: string | null;
+  shared_at?: string | null;
+}
+
+export interface SharedStory extends Story {
+  owner_name?: string | null;
 }
 
 // ============================================================================

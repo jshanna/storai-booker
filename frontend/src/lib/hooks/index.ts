@@ -10,3 +10,4 @@ export * from './usePagination';
 export * from './useAuth';
 export * from './useTemplates';
 export * from './useRouteAnnouncer';
+export * from './useSharing';

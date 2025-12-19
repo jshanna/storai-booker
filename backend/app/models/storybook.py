@@ -104,6 +104,11 @@ class Storybook(Document):
     error_message: Optional[str] = None
     cover_image_url: Optional[str] = None
 
+    # Sharing
+    is_shared: bool = Field(default=False, description="Whether story is publicly shared")
+    share_token: Optional[str] = Field(default=None, description="Unique token for shared URL")
+    shared_at: Optional[datetime] = Field(default=None, description="When sharing was enabled")
+
     class Settings:
         """Beanie document settings."""
 
@@ -119,6 +124,8 @@ class Storybook(Document):
             IndexModel([("created_at", DESCENDING)]),
             IndexModel([("status", 1)]),
             IndexModel([("title", "text")]),  # Text search on title
+            # Sharing index
+            IndexModel([("share_token", 1)], unique=True, sparse=True),
         ]
         # Configure Beanie to use timezone-aware datetimes
         use_state_management = True

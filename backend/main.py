@@ -147,12 +147,14 @@ from app.api import settings as settings_router
 from app.api import auth
 from app.api import exports
 from app.api import templates
+from app.api import sharing
 
 app.include_router(auth.router, prefix="/api/auth", tags=["authentication"])
 app.include_router(stories.router, prefix="/api/stories", tags=["stories"])
 app.include_router(settings_router.router, prefix="/api/settings", tags=["settings"])
 app.include_router(exports.router, prefix="/api/exports", tags=["exports"])
 app.include_router(templates.router, prefix="/api/templates", tags=["templates"])
+app.include_router(sharing.router, prefix="/api", tags=["sharing"])
 
 
 if __name__ == "__main__":

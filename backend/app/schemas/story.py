@@ -90,6 +90,10 @@ class StoryResponse(BaseModel):
     status: str
     error_message: Optional[str] = None
     cover_image_url: Optional[str] = None
+    # Sharing fields
+    is_shared: bool = False
+    share_token: Optional[str] = None
+    shared_at: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)
 

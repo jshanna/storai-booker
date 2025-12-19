@@ -24,6 +24,7 @@ const LoginPage = lazy(() => import('@/pages/LoginPage').then(m => ({ default: m
 const RegisterPage = lazy(() => import('@/pages/RegisterPage').then(m => ({ default: m.RegisterPage })));
 const ProfilePage = lazy(() => import('@/pages/ProfilePage').then(m => ({ default: m.ProfilePage })));
 const OAuthCallbackPage = lazy(() => import('@/pages/OAuthCallbackPage').then(m => ({ default: m.OAuthCallbackPage })));
+const SharedReaderPage = lazy(() => import('@/pages/SharedReaderPage').then(m => ({ default: m.SharedReaderPage })));
 
 // Create React Query client
 const queryClient = new QueryClient({
@@ -54,6 +55,7 @@ function AppContent() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/auth/callback" element={<OAuthCallbackPage />} />
+          <Route path="/shared/:token" element={<SharedReaderPage />} />
 
           {/* Protected routes */}
           <Route

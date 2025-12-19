@@ -2,7 +2,7 @@
 from datetime import datetime, timezone
 from typing import List, Optional
 from beanie import Document, Indexed
-from pydantic import BaseModel, Field, ConfigDict, field_validator
+from pydantic import BaseModel, Field, ConfigDict
 from pymongo import IndexModel, DESCENDING
 
 
@@ -25,66 +25,16 @@ class DialogueEntry(BaseModel):
 
     character: str = Field(..., description="Character name speaking")
     text: str = Field(..., description="Dialogue text")
-    position: str = Field(
-        default="top-left",
-        description="Position of speech bubble in panel"
-    )
-    style: str = Field(
-        default="speech",
-        description="Bubble style: speech, thought, shout, whisper"
-    )
-
-    @field_validator("position", mode="before")
-    @classmethod
-    def validate_position(cls, v):
-        """Normalize position to valid value."""
-        valid = {"top-left", "top-center", "top-right", "middle-left", "middle-center",
-                 "middle-right", "bottom-left", "bottom-center", "bottom-right"}
-        if v in valid:
-            return v
-        return "top-left"  # Default for invalid positions
-
-    @field_validator("style", mode="before")
-    @classmethod
-    def validate_style(cls, v):
-        """Normalize style to valid value."""
-        valid = {"speech", "thought", "shout", "whisper"}
-        if v in valid:
-            return v
-        return "speech"  # Default for invalid styles (e.g., LLM confusing with sound effect styles)
+    position: str = Field(default="top-left", description="Position of speech bubble in panel")
+    style: str = Field(default="speech", description="Bubble style")
 
 
 class SoundEffect(BaseModel):
     """A sound effect in a comic panel."""
 
     text: str = Field(..., description="Sound effect text (e.g., BOOM!, POW!)")
-    position: str = Field(
-        default="top-right",
-        description="Position in panel"
-    )
-    style: str = Field(
-        default="impact",
-        description="Visual style: impact, whoosh, ambient, dramatic"
-    )
-
-    @field_validator("position", mode="before")
-    @classmethod
-    def validate_position(cls, v):
-        """Normalize position to valid value."""
-        valid = {"top-left", "top-center", "top-right", "middle-left", "middle-center",
-                 "middle-right", "bottom-left", "bottom-center", "bottom-right"}
-        if v in valid:
-            return v
-        return "top-right"  # Default for invalid positions
-
-    @field_validator("style", mode="before")
-    @classmethod
-    def validate_style(cls, v):
-        """Normalize style to valid value."""
-        valid = {"impact", "whoosh", "ambient", "dramatic"}
-        if v in valid:
-            return v
-        return "impact"  # Default for invalid styles
+    position: str = Field(default="top-right", description="Position in panel")
+    style: str = Field(default="impact", description="Visual style of the effect")
 
 
 class Panel(BaseModel):

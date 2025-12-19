@@ -88,6 +88,12 @@ class AggregatedCriticReview(BaseModel):
     weighted_score: float = Field(
         ..., ge=1.0, le=10.0, description="Weighted average of all critic scores"
     )
+    min_critic_score: int = Field(
+        ..., ge=1, le=10, description="Lowest score from any critic"
+    )
+    failed_min_threshold: bool = Field(
+        ..., description="Whether any critic scored below the minimum threshold"
+    )
     passes_threshold: bool = Field(
         ..., description="Whether the page passes the quality threshold"
     )
@@ -106,10 +112,11 @@ def aggregate_critic_reviews(
     composition: CompositionCriticOutput,
     story: StoryCriticOutput,
     technical: TechnicalCriticOutput,
-    composition_weight: float = 0.35,
-    story_weight: float = 0.35,
-    technical_weight: float = 0.30,
-    quality_threshold: float = 6.5,
+    composition_weight: float = 0.30,
+    story_weight: float = 0.30,
+    technical_weight: float = 0.40,
+    quality_threshold: float = 7.5,
+    min_score_threshold: float = 5.0,
 ) -> AggregatedCriticReview:
     """
     Aggregate reviews from all critics into a single result.
@@ -118,10 +125,11 @@ def aggregate_critic_reviews(
         composition: Composition critic output
         story: Story critic output
         technical: Technical critic output
-        composition_weight: Weight for composition score (default: 0.35)
-        story_weight: Weight for story score (default: 0.35)
-        technical_weight: Weight for technical score (default: 0.30)
-        quality_threshold: Minimum weighted score to pass (default: 6.5)
+        composition_weight: Weight for composition score (default: 0.30)
+        story_weight: Weight for story score (default: 0.30)
+        technical_weight: Weight for technical score (default: 0.40)
+        quality_threshold: Minimum weighted score to pass (default: 7.5)
+        min_score_threshold: Minimum score ANY critic must give (default: 5.0)
 
     Returns:
         AggregatedCriticReview with combined results
@@ -133,7 +141,12 @@ def aggregate_critic_reviews(
         + technical.score * technical_weight
     )
 
-    passes = weighted_score >= quality_threshold
+    # Find minimum critic score
+    min_critic_score = min(composition.score, story.score, technical.score)
+    failed_min_threshold = min_critic_score < min_score_threshold
+
+    # Page passes only if weighted score meets threshold AND no critic is below minimum
+    passes = weighted_score >= quality_threshold and not failed_min_threshold
 
     # Collect all issues and prioritize by severity (lower scores = more severe)
     all_issues = []
@@ -168,10 +181,17 @@ def aggregate_critic_reviews(
     if not passes:
         revision_parts = ["IMPORTANT IMPROVEMENTS NEEDED:"]
 
+        # Add note about which threshold was violated
+        if failed_min_threshold:
+            lowest_critic = critic_scores[0]
+            revision_parts.append(
+                f"CRITICAL: {lowest_critic[1].capitalize()} critic scored {lowest_critic[0]}/10 "
+                f"(below minimum {min_score_threshold}). This must be addressed."
+            )
+
         # Add specific suggestions from lowest-scoring critic
         lowest_critic = critic_scores[0]
         if lowest_critic[0] < 7:
-            critic_name = lowest_critic[1].capitalize()
             if lowest_critic[1] == "composition":
                 revision_parts.extend(composition.suggestions[:3])
             elif lowest_critic[1] == "story":
@@ -186,6 +206,8 @@ def aggregate_critic_reviews(
         story_review=story,
         technical_review=technical,
         weighted_score=round(weighted_score, 2),
+        min_critic_score=min_critic_score,
+        failed_min_threshold=failed_min_threshold,
         passes_threshold=passes,
         combined_feedback=combined_feedback,
         priority_improvements=priority_improvements[:5],  # Top 5 priorities

@@ -77,24 +77,28 @@ class Settings(BaseSettings):
 
     # Critic Agent Settings (Whole-Page Comic Generation)
     critic_quality_threshold: float = Field(
-        default=6.5, alias="CRITIC_QUALITY_THRESHOLD",
+        default=7.5, alias="CRITIC_QUALITY_THRESHOLD",
         description="Minimum weighted score (1-10) to accept a page"
+    )
+    critic_min_score: float = Field(
+        default=5.0, alias="CRITIC_MIN_SCORE",
+        description="Minimum score ANY critic must give (triggers regen if below)"
     )
     critic_max_revisions: int = Field(
         default=3, alias="CRITIC_MAX_REVISIONS",
         description="Maximum revision attempts per page"
     )
     critic_composition_weight: float = Field(
-        default=0.35, alias="CRITIC_COMPOSITION_WEIGHT",
+        default=0.30, alias="CRITIC_COMPOSITION_WEIGHT",
         description="Weight for composition critic score"
     )
     critic_story_weight: float = Field(
-        default=0.35, alias="CRITIC_STORY_WEIGHT",
+        default=0.30, alias="CRITIC_STORY_WEIGHT",
         description="Weight for story critic score"
     )
     critic_technical_weight: float = Field(
-        default=0.30, alias="CRITIC_TECHNICAL_WEIGHT",
-        description="Weight for technical critic score"
+        default=0.40, alias="CRITIC_TECHNICAL_WEIGHT",
+        description="Weight for technical critic score (higher for text quality)"
     )
     whole_page_generation: bool = Field(
         default=True, alias="WHOLE_PAGE_GENERATION",

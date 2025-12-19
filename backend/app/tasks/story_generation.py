@@ -1148,6 +1148,7 @@ async def _generate_comic_page_with_critics(
     # Use settings defaults if not provided
     max_revisions = max_revisions or settings.critic_max_revisions
     quality_threshold = quality_threshold or settings.critic_quality_threshold
+    min_score_threshold = settings.critic_min_score
 
     # Critic weights from settings
     critic_weights = {
@@ -1158,7 +1159,7 @@ async def _generate_comic_page_with_critics(
 
     logger.info(
         f"Generating whole-page comic for page {page.page_number} "
-        f"(max_revisions={max_revisions}, threshold={quality_threshold})"
+        f"(max_revisions={max_revisions}, threshold={quality_threshold}, min_score={min_score_threshold})"
     )
 
     # Initialize critics
@@ -1237,14 +1238,23 @@ async def _generate_comic_page_with_critics(
                 story_weight=critic_weights["story"],
                 technical_weight=critic_weights["technical"],
                 quality_threshold=quality_threshold,
+                min_score_threshold=min_score_threshold,
             )
+
+            # Build fail reason for logging
+            fail_reasons = []
+            if aggregated.weighted_score < quality_threshold:
+                fail_reasons.append(f"weighted={aggregated.weighted_score:.2f}<{quality_threshold}")
+            if aggregated.failed_min_threshold:
+                fail_reasons.append(f"min_score={aggregated.min_critic_score}<{min_score_threshold}")
+            fail_reason = ", ".join(fail_reasons) if fail_reasons else "passed"
 
             logger.info(
                 f"Page {page.page_number} attempt {attempt + 1}: "
-                f"weighted_score={aggregated.weighted_score:.2f} "
+                f"weighted_score={aggregated.weighted_score:.2f}, min_score={aggregated.min_critic_score} "
                 f"(comp={composition_review.score}, story={story_review.score}, "
                 f"tech={technical_review.score}) "
-                f"pass={aggregated.passes_threshold}"
+                f"pass={aggregated.passes_threshold} [{fail_reason}]"
             )
 
             # Track best result
@@ -1256,7 +1266,8 @@ async def _generate_comic_page_with_critics(
             if aggregated.passes_threshold:
                 logger.info(
                     f"Page {page.page_number} passed quality threshold "
-                    f"({aggregated.weighted_score:.2f} >= {quality_threshold})"
+                    f"(weighted={aggregated.weighted_score:.2f}>={quality_threshold}, "
+                    f"min_score={aggregated.min_critic_score}>={min_score_threshold})"
                 )
                 break
 

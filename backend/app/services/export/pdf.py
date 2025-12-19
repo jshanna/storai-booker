@@ -1,7 +1,7 @@
 """PDF export service using ReportLab."""
 
 import io
-from typing import Optional
+from typing import Optional, Dict
 from reportlab.lib.pagesizes import LETTER, A4
 from reportlab.lib.units import inch
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -33,6 +33,10 @@ class PDFExporter(BaseExporter):
         """
         self.page_size = page_size
         self.margin = 0.75 * inch
+        # Track page numbers for comic pages (keyed by PDF page number)
+        self._comic_page_numbers: Dict[int, int] = {}
+        self._is_comic = False
+        self._current_pdf_page = 0
 
     async def export(self, story) -> ExportResult:
         """
@@ -45,6 +49,11 @@ class PDFExporter(BaseExporter):
             ExportResult with PDF data
         """
         logger.info(f"Exporting story '{story.title}' to PDF")
+
+        # Reset state
+        self._comic_page_numbers = {}
+        self._is_comic = story.generation_inputs.format == "comic"
+        self._current_pdf_page = 0
 
         # Create PDF buffer
         buffer = io.BytesIO()
@@ -60,10 +69,16 @@ class PDFExporter(BaseExporter):
         )
 
         # Build content
-        elements = await self._build_content(story)
+        elements, page_number_map = await self._build_content(story)
 
-        # Generate PDF
-        doc.build(elements)
+        # Store page number map for callback
+        self._comic_page_numbers = page_number_map
+
+        # Generate PDF with page number callback for comics
+        if self._is_comic:
+            doc.build(elements, onFirstPage=self._draw_page_number, onLaterPages=self._draw_page_number)
+        else:
+            doc.build(elements)
 
         # Get PDF data
         pdf_data = buffer.getvalue()
@@ -80,7 +95,35 @@ class PDFExporter(BaseExporter):
             size=len(pdf_data),
         )
 
-    async def _build_content(self, story) -> list:
+    def _draw_page_number(self, canvas, doc):
+        """
+        Draw page number on comic pages using canvas directly.
+
+        This is called by ReportLab for each page and draws the page number
+        at a fixed position, avoiding flow issues.
+        """
+        # Get current PDF page number (1-indexed)
+        pdf_page = doc.page
+
+        # Check if this PDF page has a comic page number
+        if pdf_page in self._comic_page_numbers:
+            comic_page_num = self._comic_page_numbers[pdf_page]
+
+            canvas.saveState()
+            canvas.setFont("Helvetica", 12)
+            canvas.setFillColor(colors.gray)
+
+            # Draw centered at bottom of page
+            page_width = self.page_size[0]
+            text = f"- {comic_page_num} -"
+            text_width = canvas.stringWidth(text, "Helvetica", 12)
+            x = (page_width - text_width) / 2
+            y = 0.4 * inch  # Fixed position from bottom
+
+            canvas.drawString(x, y, text)
+            canvas.restoreState()
+
+    async def _build_content(self, story) -> tuple:
         """
         Build PDF content elements.
 
@@ -88,9 +131,12 @@ class PDFExporter(BaseExporter):
             story: Storybook document
 
         Returns:
-            List of ReportLab elements
+            Tuple of (elements list, page_number_map dict)
+            page_number_map maps PDF page numbers to comic page numbers
         """
         elements = []
+        page_number_map = {}  # PDF page -> comic page number
+        pdf_page = 1  # Track which PDF page we're on (1-indexed)
         styles = getSampleStyleSheet()
 
         # Custom styles
@@ -144,6 +190,7 @@ class PDFExporter(BaseExporter):
                 if cover_img:
                     elements.append(cover_img)
                     elements.append(PageBreak())
+                    pdf_page += 1
         else:
             # No cover image - show title text instead
             elements.append(Spacer(1, 2 * inch))
@@ -151,6 +198,7 @@ class PDFExporter(BaseExporter):
             subtitle = f"A {story.generation_inputs.format.title()} for ages {story.generation_inputs.audience_age}"
             elements.append(Paragraph(subtitle, subtitle_style))
             elements.append(PageBreak())
+            pdf_page += 1
 
         # Determine if comic format
         is_comic = story.generation_inputs.format == "comic"
@@ -163,14 +211,16 @@ class PDFExporter(BaseExporter):
                     # Whole-page generation: single image for entire page
                     img_data = await self.download_image(page.illustration_url)
                     if img_data:
-                        img = await self._create_image(img_data, max_width=7*inch, max_height=9*inch)
+                        # Use larger image that fills the page (page number drawn separately)
+                        img = await self._create_image(img_data, max_width=7.5*inch, max_height=9.5*inch)
                         if img:
                             elements.append(img)
-                            elements.append(Spacer(1, 0.2 * inch))
-                            elements.append(Paragraph(f"- {page.page_number} -", page_number_style))
+                    # Track this PDF page's comic page number (drawn via canvas callback)
+                    page_number_map[pdf_page] = page.page_number
                     elements.append(PageBreak())
+                    pdf_page += 1
                 else:
-                    # Per-panel generation: render panel grid
+                    # Per-panel generation: render panel grid (page number in grid)
                     panel_images = []
                     for panel in page.panels:
                         if panel.illustration_url:
@@ -179,9 +229,11 @@ class PDFExporter(BaseExporter):
                                 panel_images.append(img_data)
 
                     if panel_images:
-                        # Create grid layout with page number embedded
-                        await self._add_comic_page(elements, panel_images, page.page_number, page_number_style)
+                        # Create grid layout - page number drawn via callback
+                        await self._add_comic_page_no_number(elements, panel_images)
+                    page_number_map[pdf_page] = page.page_number
                     elements.append(PageBreak())
+                    pdf_page += 1
             else:
                 # Storybook format: single illustration + text
                 if page.illustration_url:
@@ -196,22 +248,31 @@ class PDFExporter(BaseExporter):
                 if page.text:
                     elements.append(Paragraph(page.text, body_style))
 
-                # Page number (only for storybook format)
+                # Page number (only for storybook format - inline is fine)
                 elements.append(Spacer(1, 0.5 * inch))
                 elements.append(Paragraph(f"- {page.page_number} -", page_number_style))
                 elements.append(PageBreak())
+                pdf_page += 1
 
         # End page
         elements.append(Spacer(1, 3 * inch))
         elements.append(Paragraph("The End", title_style))
 
-        return elements
+        return elements, page_number_map
+
+    async def _add_comic_page_no_number(
+        self,
+        elements: list,
+        panel_images: list,
+    ) -> None:
+        """Add a comic page with panel grid layout (no page number - drawn via callback)."""
+        await self._add_comic_page(elements, panel_images, None, None)
 
     async def _add_comic_page(
         self,
         elements: list,
         panel_images: list,
-        page_number: int,
+        page_number: Optional[int],
         page_number_style,
     ) -> None:
         """
@@ -220,7 +281,7 @@ class PDFExporter(BaseExporter):
         Args:
             elements: List of ReportLab elements to append to
             panel_images: List of panel image bytes
-            page_number: Page number
+            page_number: Page number (None to skip)
             page_number_style: Style for page number text
         """
         panel_count = len(panel_images)
@@ -291,8 +352,9 @@ class PDFExporter(BaseExporter):
         ]))
 
         elements.append(table)
-        # Add page number directly after table (no spacer to avoid overflow)
-        elements.append(Paragraph(f"- {page_number} -", page_number_style))
+        # Add page number directly after table (only if provided - otherwise drawn via callback)
+        if page_number is not None and page_number_style is not None:
+            elements.append(Paragraph(f"- {page_number} -", page_number_style))
 
     async def _create_panel_image(
         self,

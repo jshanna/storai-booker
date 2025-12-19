@@ -39,6 +39,7 @@ class BaseImageProvider(ABC):
         prompt: str,
         aspect_ratio: Optional[str] = None,
         negative_prompt: Optional[str] = None,
+        target_age: Optional[int] = None,
         **kwargs
     ) -> bytes:
         """
@@ -48,6 +49,7 @@ class BaseImageProvider(ABC):
             prompt: Text description of the image to generate
             aspect_ratio: Override default aspect ratio (e.g., "16:9", "3:4", "1:1")
             negative_prompt: Optional negative prompt (what to avoid)
+            target_age: Target audience age (affects content guidelines)
             **kwargs: Additional provider-specific parameters
 
         Returns:
@@ -58,27 +60,66 @@ class BaseImageProvider(ABC):
         """
         pass
 
-    def _enhance_prompt_for_children(self, prompt: str) -> str:
+    def _enhance_prompt_for_audience(self, prompt: str, target_age: Optional[int] = None) -> str:
         """
-        Enhance a prompt to ensure child-appropriate content.
+        Enhance a prompt with age-appropriate content guidelines.
 
-        Adds safety guidelines and style enhancements to ensure
-        generated images are suitable for children's storybooks.
+        Adds safety guidelines and style enhancements based on the target
+        audience age.
 
         Args:
             prompt: Original image prompt
+            target_age: Target audience age (default assumes children if not specified)
 
         Returns:
-            Enhanced prompt with safety guidelines
+            Enhanced prompt with appropriate guidelines
         """
-        safety_prefix = (
-            "Create a child-friendly, wholesome illustration suitable for young children. "
-            "Style: colorful, friendly, non-scary, age-appropriate. "
-        )
+        age = target_age or 8  # Default to child-appropriate if not specified
 
-        safety_suffix = (
-            " Use bright, cheerful colors. Avoid anything frightening, violent, or inappropriate. "
-            "The image should feel warm, inviting, and magical."
-        )
+        if age <= 6:
+            # Very young children - most restrictive
+            safety_prefix = (
+                "Create a gentle, child-friendly illustration for very young children (ages 3-6). "
+                "Style: soft colors, simple shapes, friendly characters, non-scary. "
+            )
+            safety_suffix = (
+                " Use soft, pastel colors. Absolutely nothing frightening, intense, or complex. "
+                "The image should feel safe, warm, and nurturing. Simple and cheerful."
+            )
+        elif age <= 12:
+            # Children - standard children's content
+            safety_prefix = (
+                "Create a child-friendly, wholesome illustration suitable for children. "
+                "Style: colorful, friendly, age-appropriate for kids. "
+            )
+            safety_suffix = (
+                " Use bright, cheerful colors. Avoid anything frightening, violent, or inappropriate. "
+                "The image should feel warm, inviting, and magical."
+            )
+        elif age <= 17:
+            # Teens - more mature themes allowed but still appropriate
+            safety_prefix = (
+                "Create an engaging illustration suitable for teenagers. "
+                "Style: dynamic, stylish, age-appropriate for teens. "
+            )
+            safety_suffix = (
+                " The image can have more dramatic elements but should remain appropriate "
+                "for a teen audience. No explicit content, gore, or extreme violence."
+            )
+        else:
+            # Adults - minimal restrictions, focus on quality
+            safety_prefix = (
+                "Create a high-quality illustration. "
+                "Style: professional, artistic, visually compelling. "
+            )
+            safety_suffix = (
+                " Focus on artistic quality and visual impact. "
+                "The image should be sophisticated and well-composed."
+            )
 
         return f"{safety_prefix}{prompt}{safety_suffix}"
+
+    # Keep old method name for backwards compatibility
+    def _enhance_prompt_for_children(self, prompt: str) -> str:
+        """Deprecated: Use _enhance_prompt_for_audience instead."""
+        return self._enhance_prompt_for_audience(prompt, target_age=8)

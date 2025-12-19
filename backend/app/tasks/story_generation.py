@@ -226,6 +226,7 @@ This is a REFERENCE IMAGE for character consistency."""
             gen_kwargs = {
                 "prompt": prompt,
                 "aspect_ratio": "3:4",  # Portrait for character sheets
+                "target_age": story.generation_inputs.audience_age,
             }
 
             if safety_settings:
@@ -537,6 +538,7 @@ async def _generate_story_workflow(story_id: str, task) -> dict:
                     image_provider=image_provider,
                     safety_settings=app_settings.safety_settings,
                     character_reference=character_reference_bytes,
+                    target_age=story.generation_inputs.audience_age,
                     max_retries=settings.image_max_retries,
                 )
 
@@ -741,6 +743,7 @@ async def _generate_story_workflow(story_id: str, task) -> dict:
                                 image_provider=image_provider,
                                 safety_settings=app_settings.safety_settings,
                                 character_reference=character_reference_bytes,
+                                target_age=story.generation_inputs.audience_age,
                                 max_retries=settings.image_max_retries,
                             )
 
@@ -1015,6 +1018,7 @@ async def _generate_page_illustration(
     image_provider: BaseImageProvider,
     safety_settings=None,
     character_reference: Optional[List[bytes]] = None,
+    target_age: Optional[int] = None,
     max_retries: int = 3,
 ) -> Optional[str]:
     """
@@ -1026,6 +1030,7 @@ async def _generate_page_illustration(
         image_provider: Image generation provider
         safety_settings: Safety settings for image generation
         character_reference: List of character sheet images for consistency
+        target_age: Target audience age for content guidelines
         max_retries: Maximum number of retry attempts
 
     Returns:
@@ -1045,6 +1050,7 @@ async def _generate_page_illustration(
             gen_kwargs = {
                 "prompt": page.illustration_prompt,
                 "aspect_ratio": settings.image_aspect_ratio,
+                "target_age": target_age,
             }
 
             # Add character reference sheets if provided
@@ -1205,6 +1211,7 @@ async def _generate_comic_page_with_critics(
                 prompt=page_prompt,
                 aspect_ratio="3:4",  # Portrait comic page
                 reference_images=character_reference,
+                target_age=story.generation_inputs.audience_age,
                 **safety_kwargs,
             )
 
@@ -1385,6 +1392,7 @@ async def _generate_comic_panel_illustrations(
                 gen_kwargs = {
                     "prompt": panel_prompt,
                     "aspect_ratio": panel_aspect_ratio,
+                    "target_age": story.generation_inputs.audience_age,
                 }
 
                 # Add character reference sheets if provided
@@ -1668,6 +1676,7 @@ async def _generate_cover_image(
         gen_kwargs = {
             "prompt": cover_prompt,
             "aspect_ratio": settings.cover_aspect_ratio,
+            "target_age": story.generation_inputs.audience_age,
         }
 
         # Add character reference sheets if provided for consistency

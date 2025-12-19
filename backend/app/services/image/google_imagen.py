@@ -114,6 +114,7 @@ class GoogleImagenProvider(BaseImageProvider):
         aspect_ratio: Optional[str] = None,
         reference_images: Optional[List] = None,
         negative_prompt: Optional[str] = None,
+        target_age: Optional[int] = None,
         safety_threshold: str = "block_medium_and_above",
         allow_adult_imagery: bool = False,
         bypass_safety_filters: bool = False,
@@ -127,6 +128,7 @@ class GoogleImagenProvider(BaseImageProvider):
             aspect_ratio: Aspect ratio (e.g., "16:9", "3:4", "1:1")
             reference_images: List of reference image bytes for character consistency
             negative_prompt: Not used by Gemini (kept for interface compatibility)
+            target_age: Target audience age (affects content guidelines)
             safety_threshold: Safety filter threshold
             allow_adult_imagery: Allow adult characters in images
             bypass_safety_filters: Completely disable safety filters
@@ -142,12 +144,12 @@ class GoogleImagenProvider(BaseImageProvider):
             # Use provided aspect ratio or default
             ratio = aspect_ratio or self.aspect_ratio
 
-            # Enhance prompt for children's content (unless bypassing filters)
+            # Enhance prompt for target audience (unless bypassing filters)
             if bypass_safety_filters:
                 enhanced_prompt = prompt
                 logger.warning("Safety filters bypassed - using raw prompt")
             else:
-                enhanced_prompt = self._enhance_prompt_for_children(prompt)
+                enhanced_prompt = self._enhance_prompt_for_audience(prompt, target_age)
 
             # Add character consistency instruction if reference images provided
             if reference_images:
@@ -327,24 +329,43 @@ CRITICAL: Ensure all characters look identical to their appearance in the refere
 
         return cropped
 
-    def _enhance_prompt_for_children(self, prompt: str) -> str:
+    def _enhance_prompt_for_audience(self, prompt: str, target_age: Optional[int] = None) -> str:
         """
-        Enhance prompt for children's content.
+        Enhance prompt for target audience.
 
         Args:
             prompt: Original prompt
+            target_age: Target audience age
 
         Returns:
-            Enhanced prompt for children's content
+            Enhanced prompt appropriate for the target audience
         """
         # Call base implementation
-        base_enhanced = super()._enhance_prompt_for_children(prompt)
+        base_enhanced = super()._enhance_prompt_for_audience(prompt, target_age)
 
-        # Add Gemini-specific instructions for better quality
-        gemini_specific = (
-            " Create a high-quality children's book illustration. "
-            "Use vibrant, appealing colors and a warm, inviting composition. "
-            "Ensure all elements are clearly visible and age-appropriate."
-        )
+        age = target_age or 8
+
+        # Add Gemini-specific instructions based on age
+        if age <= 12:
+            gemini_specific = (
+                " Create a high-quality children's book illustration. "
+                "Use vibrant, appealing colors and a warm, inviting composition. "
+                "Ensure all elements are clearly visible and age-appropriate."
+            )
+        elif age <= 17:
+            gemini_specific = (
+                " Create a high-quality illustration with dynamic composition. "
+                "Use bold colors and engaging visual elements appropriate for teens."
+            )
+        else:
+            gemini_specific = (
+                " Create a high-quality, professional illustration. "
+                "Focus on artistic composition, lighting, and visual storytelling."
+            )
 
         return f"{base_enhanced}{gemini_specific}"
+
+    # Keep old method for backwards compatibility
+    def _enhance_prompt_for_children(self, prompt: str) -> str:
+        """Deprecated: Use _enhance_prompt_for_audience instead."""
+        return self._enhance_prompt_for_audience(prompt, target_age=8)

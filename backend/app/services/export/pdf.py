@@ -211,8 +211,11 @@ class PDFExporter(BaseExporter):
                     # Whole-page generation: single image for entire page
                     img_data = await self.download_image(page.illustration_url)
                     if img_data:
-                        # Use larger image that fills the page (page number drawn separately)
-                        img = await self._create_image(img_data, max_width=7.5*inch, max_height=9.5*inch)
+                        # Fit within frame (page minus margins minus buffer for page number)
+                        # Frame is approximately 492x672 points for LETTER with 0.75" margins
+                        max_w = self.page_size[0] - 2 * self.margin - 0.25 * inch
+                        max_h = self.page_size[1] - 2 * self.margin - 0.5 * inch  # Leave room for page number
+                        img = await self._create_image(img_data, max_width=max_w, max_height=max_h)
                         if img:
                             elements.append(img)
                     # Track this PDF page's comic page number (drawn via canvas callback)

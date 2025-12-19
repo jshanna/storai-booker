@@ -101,7 +101,29 @@ def build_comic_page_generation_prompt(
         prev_outline = metadata.page_outlines[page_number - 2]
         previous_context = f"\n**Previous Page Context:**\nPage {page_number - 1}: {prev_outline}\n"
 
-    prompt = f"""You are creating page {page_number} of {inputs.page_count} for a children's comic book.
+    # Determine comic type based on age
+    if inputs.audience_age <= 12:
+        comic_type = "children's comic book"
+        content_guidance = """**Age-Appropriate Content:**
+- Vocabulary suitable for {age}-year-olds
+- Keep dialogue simple and clear
+- Action should be exciting but not scary for young readers"""
+    elif inputs.audience_age <= 17:
+        comic_type = "young adult comic"
+        content_guidance = """**Content Guidelines:**
+- Vocabulary and themes appropriate for teenagers
+- Dialogue can be more sophisticated
+- Action can be more intense but avoid graphic violence"""
+    else:
+        comic_type = "comic"
+        content_guidance = """**Content Guidelines:**
+- Full creative freedom with dialogue and themes
+- Professional-quality storytelling
+- Mature themes allowed when appropriate to the story"""
+
+    content_guidance = content_guidance.format(age=inputs.audience_age)
+
+    prompt = f"""You are creating page {page_number} of {inputs.page_count} for a {comic_type}.
 
 **Comic Format:**
 - YOU decide how many panels this page needs (1-6 panels) based on the story beat
@@ -171,10 +193,7 @@ For EACH panel, provide:
 - Middle panels: Build action and tension
 - Final panel: Cliffhanger or resolution for this page
 
-**Age-Appropriate Content:**
-- Vocabulary suitable for {inputs.audience_age}-year-olds
-- Keep dialogue simple and clear
-- Action should be exciting but not scary for young readers
+{content_guidance}
 
 Generate panels with varied pacing - mix dialogue-heavy and action-focused panels."""
 

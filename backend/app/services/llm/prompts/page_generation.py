@@ -43,8 +43,19 @@ def build_page_generation_prompt(
         prev_outline = metadata.page_outlines[page_number - 2]
         previous_context = f"\n**Previous Page Context:**\nPage {page_number - 1}: {prev_outline}\n"
 
+    # Determine format type based on age
+    if inputs.audience_age <= 12:
+        format_type = "children's storybook"
+        text_guidance = "2-4 sentences for young children, longer for older"
+    elif inputs.audience_age <= 17:
+        format_type = "young adult illustrated story"
+        text_guidance = "appropriate length for the scene - can be longer and more detailed"
+    else:
+        format_type = "illustrated story"
+        text_guidance = "appropriate length for the scene - full creative freedom"
+
     # Build the prompt
-    prompt = f"""You are writing page {page_number} of {inputs.page_count} for a children's storybook.
+    prompt = f"""You are writing page {page_number} of {inputs.page_count} for a {format_type}.
 
 **Story Context:**
 - Overall Story: {metadata.story_outline}
@@ -62,7 +73,7 @@ Generate the content for this page including:
 1. **Page Text**: Write the narrative text that appears on this page.
    - Match the reading level for a {inputs.audience_age}-year-old
    - Use vocabulary appropriate for the age
-   - Keep the text length suitable for one page (2-4 sentences for young children, longer for older)
+   - Keep the text length suitable for one page ({text_guidance})
    - Maintain character consistency with the descriptions provided
    - Flow naturally from the previous page
 
@@ -78,7 +89,7 @@ Remember:
 - This is page {page_number} of {inputs.page_count}, so pace the story appropriately
 - Stay true to the character descriptions and story outline
 - The illustration should complement and enhance the text
-- Keep everything age-appropriate for {inputs.audience_age}-year-olds"""
+- Keep everything appropriate for the {inputs.audience_age}-year-old target audience"""
 
     return prompt
 

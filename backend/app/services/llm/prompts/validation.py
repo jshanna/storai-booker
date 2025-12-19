@@ -42,7 +42,16 @@ def build_validation_prompt(storybook: Storybook) -> str:
     # Get age-specific content restrictions
     age_restrictions = _get_age_content_restrictions(storybook.generation_inputs.audience_age)
 
-    prompt = f"""You are a children's story editor reviewing a completed storybook for quality and consistency.
+    # Determine editor role based on age
+    age = storybook.generation_inputs.audience_age
+    if age <= 12:
+        editor_role = "children's story editor"
+    elif age <= 17:
+        editor_role = "young adult fiction editor"
+    else:
+        editor_role = "fiction editor"
+
+    prompt = f"""You are a {editor_role} reviewing a completed storybook for quality and consistency.
 
 **Story Information:**
 - Title: {storybook.title}
@@ -223,7 +232,7 @@ def _get_age_content_restrictions(age: int) -> str:
    - Complex moral questions acceptable
    - Keep violence/romance age-appropriate"""
 
-    else:  # 17-18
+    elif age <= 17:
         return """   - NO pornographic or explicit sexual content
    - NO gratuitous graphic violence
    - NO promotion of illegal activities or self-harm
@@ -233,3 +242,12 @@ def _get_age_content_restrictions(age: int) -> str:
    - Romance acceptable if respectful and appropriate
    - Violence acceptable if story-relevant, not glorified
    - Note: Still young adult content, not adult content"""
+
+    else:  # 18+ Adult
+        return """   - Adult content guidelines
+   - Full creative freedom for mature storytelling
+   - Complex themes and moral ambiguity allowed
+   - Romance and relationships handled with maturity
+   - Violence acceptable when serving the narrative
+   - Focus on quality storytelling and artistic merit
+   - No gratuitous content without narrative purpose"""

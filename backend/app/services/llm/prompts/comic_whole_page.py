@@ -201,37 +201,94 @@ def _get_sfx_style(style: str) -> str:
 
 
 def _build_style_section(inputs: GenerationInputs) -> str:
-    """Build art style instructions."""
-    style = inputs.illustration_style or "colorful children's book illustration"
+    """Build art style instructions based on target audience age."""
+    style = inputs.illustration_style or "colorful illustration"
     age = inputs.audience_age or 8
 
-    return f"""{style}
+    if age <= 6:
+        return f"""{style}
 
-Target audience: {age}-year-old children
+Target audience: young children (ages 3-6)
+- Use soft, gentle colors with pastel tones
+- Characters should be cute, friendly, and non-threatening
+- No scary, violent, or intense content whatsoever
+- Very simple, clear compositions
+- Warm, nurturing atmosphere
+- Round, soft shapes preferred"""
+
+    elif age <= 12:
+        return f"""{style}
+
+Target audience: children (ages 7-12)
 - Use bright, cheerful colors
 - Characters should be friendly and approachable
 - No scary, violent, or inappropriate content
 - Simple, clear compositions that are easy to follow
 - Age-appropriate expressions and body language"""
 
+    elif age <= 17:
+        return f"""{style}
+
+Target audience: teenagers (ages 13-17)
+- Use dynamic, bold colors and compositions
+- Characters can show a wider range of emotions
+- Action scenes can be more intense but not graphic
+- More sophisticated visual storytelling allowed
+- Stylish, engaging artwork that appeals to teens"""
+
+    else:
+        return f"""{style}
+
+Target audience: adults
+- Professional, high-quality artwork
+- Full range of emotional expression allowed
+- Dynamic compositions and sophisticated visual storytelling
+- Artistic freedom in style and mood
+- Focus on visual impact and narrative depth"""
+
 
 def _build_instructions_section(inputs: GenerationInputs, panel_count: int) -> str:
     """Build technical instructions for image generation."""
-    return f"""1. LAYOUT: Create exactly {panel_count} distinct panels with clear black borders
+    age = inputs.audience_age or 8
+
+    # Base technical instructions
+    base_instructions = f"""1. LAYOUT: Create exactly {panel_count} distinct panels with clear black borders
 2. TEXT: All dialogue and text must be clearly readable and properly sized
 3. BUBBLES: Speech bubbles should be white with black outlines, properly positioned near speakers
 4. READING ORDER: Ensure panels flow left-to-right, top-to-bottom
 5. CHARACTERS: Draw characters consistently across all panels
 6. STYLE: Maintain consistent art style throughout the page
-7. QUALITY: High-quality, clean artwork suitable for print
-8. SAFETY: Content must be appropriate for {inputs.audience_age or 8}-year-old children
+7. QUALITY: High-quality, clean artwork suitable for print"""
 
+    # Age-appropriate content guidelines
+    if age <= 12:
+        content_guideline = f"8. CONTENT: Appropriate for {age}-year-old children - nothing scary or inappropriate"
+        do_not_section = """
 DO NOT:
 - Leave any panels empty or incomplete
 - Create garbled or unreadable text
 - Include any scary, violent, or inappropriate imagery
 - Create distorted anatomy (extra fingers, weird proportions)
 - Let speech bubbles obscure important visual elements"""
+    elif age <= 17:
+        content_guideline = "8. CONTENT: Appropriate for teenagers - no explicit or graphic content"
+        do_not_section = """
+DO NOT:
+- Leave any panels empty or incomplete
+- Create garbled or unreadable text
+- Include explicit, graphic, or overly violent imagery
+- Create distorted anatomy (extra fingers, weird proportions)
+- Let speech bubbles obscure important visual elements"""
+    else:
+        content_guideline = "8. CONTENT: Professional quality for adult audience"
+        do_not_section = """
+DO NOT:
+- Leave any panels empty or incomplete
+- Create garbled or unreadable text
+- Create distorted anatomy (extra fingers, weird proportions)
+- Let speech bubbles obscure important visual elements"""
+
+    return f"{base_instructions}\n{content_guideline}\n{do_not_section}"
 
 
 def extract_page_script(page: Page) -> Dict[str, Any]:

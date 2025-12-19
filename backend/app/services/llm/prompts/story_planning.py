@@ -44,8 +44,16 @@ def build_story_planning_prompt(inputs: GenerationInputs) -> str:
     # Build character list
     characters_str = ", ".join(inputs.characters) if inputs.characters else "the main character"
 
+    # Determine writer role based on age
+    if inputs.audience_age <= 12:
+        writer_role = "children's story writer"
+    elif inputs.audience_age <= 17:
+        writer_role = "young adult fiction writer"
+    else:
+        writer_role = "fiction writer"
+
     # Build prompt
-    prompt = f"""You are an expert children's story writer creating a {inputs.format} for a {inputs.audience_age}-year-old audience.
+    prompt = f"""You are an expert {writer_role} creating a {inputs.format} for a {inputs.audience_age}-year-old audience.
 
 **Story Parameters:**
 - Topic: {inputs.topic}
@@ -162,8 +170,8 @@ def _get_age_guidelines(age: int) -> str:
 - Themes of independence, future planning, relationships
 - Can explore difficult topics (grief, discrimination, mental health) with sensitivity"""
 
-    else:  # 17-18
-        return """**Age Guidelines (Ages 17-18):**
+    elif age <= 17:
+        return """**Age Guidelines (Ages 17):**
 - Literary-quality writing and complex narratives
 - Fully developed characters with psychological depth
 - Sophisticated themes and philosophical questions
@@ -172,3 +180,13 @@ def _get_age_guidelines(age: int) -> str:
 - Themes of transition to adulthood, consequences, purpose
 - May explore complex social, political, or existential themes
 - Note: Still appropriate for young adults, avoid graphic violence/explicit sexual content"""
+
+    else:  # 18+
+        return """**Content Guidelines (Adult Audience):**
+- Full creative freedom with vocabulary and literary techniques
+- Complex, psychologically nuanced characters
+- Sophisticated themes without restriction
+- Mature content allowed when appropriate to the story
+- Can explore any theme: romance, conflict, moral ambiguity, etc.
+- Focus on compelling narrative and artistic quality
+- Professional-level storytelling expected"""

@@ -104,8 +104,9 @@ async def auth_headers(test_user):
 
 @pytest.fixture
 async def authenticated_client(init_test_db) -> AsyncGenerator[tuple, None]:
-    """Create a test client with an authenticated user."""
+    """Create a test client with an authenticated user and configured settings."""
     from app.services.auth import auth_service
+    from app.models.settings import AppSettings, LLMProviderConfig
 
     # Create user
     user = await auth_service.create_user(
@@ -113,6 +114,18 @@ async def authenticated_client(init_test_db) -> AsyncGenerator[tuple, None]:
         password="TestPass123",
         full_name="Auth User",
     )
+
+    # Create settings with a mock API key so story generation works
+    settings = AppSettings(
+        user_id=str(user.id),
+        primary_llm_provider=LLMProviderConfig(
+            name="google",
+            api_key="test-api-key-for-testing",
+            text_model="gemini-2.0-flash",
+            image_model="gemini-2.0-flash-exp",
+        ),
+    )
+    await settings.insert()
 
     # Get tokens
     tokens = auth_service.create_token_pair(user)

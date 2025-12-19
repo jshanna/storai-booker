@@ -158,18 +158,30 @@ class PDFExporter(BaseExporter):
         # Story pages
         for page in story.pages:
             if is_comic and page.panels:
-                # Comic format: render panel grid with page number included
-                panel_images = []
-                for panel in page.panels:
-                    if panel.illustration_url:
-                        img_data = await self.download_image(panel.illustration_url)
-                        if img_data:
-                            panel_images.append(img_data)
+                # Comic format: check for whole-page image first, then per-panel
+                if page.illustration_url:
+                    # Whole-page generation: single image for entire page
+                    img_data = await self.download_image(page.illustration_url)
+                    if img_data:
+                        img = await self._create_image(img_data, max_width=7*inch, max_height=9*inch)
+                        if img:
+                            elements.append(img)
+                            elements.append(Spacer(1, 0.2 * inch))
+                            elements.append(Paragraph(f"- {page.page_number} -", page_number_style))
+                    elements.append(PageBreak())
+                else:
+                    # Per-panel generation: render panel grid
+                    panel_images = []
+                    for panel in page.panels:
+                        if panel.illustration_url:
+                            img_data = await self.download_image(panel.illustration_url)
+                            if img_data:
+                                panel_images.append(img_data)
 
-                if panel_images:
-                    # Create grid layout with page number embedded
-                    await self._add_comic_page(elements, panel_images, page.page_number, page_number_style)
-                elements.append(PageBreak())
+                    if panel_images:
+                        # Create grid layout with page number embedded
+                        await self._add_comic_page(elements, panel_images, page.page_number, page_number_style)
+                    elements.append(PageBreak())
             else:
                 # Storybook format: single illustration + text
                 if page.illustration_url:

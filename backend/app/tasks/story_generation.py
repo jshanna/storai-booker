@@ -515,6 +515,8 @@ async def _generate_story_workflow(story_id: str, task) -> dict:
                     llm_provider=llm_provider,
                     safety_settings=app_settings.safety_settings,
                     character_reference=character_reference_bytes,
+                    task=task,
+                    total_pages=story.generation_inputs.page_count,
                 )
             else:
                 # Generate images for each panel separately (legacy mode)
@@ -599,6 +601,7 @@ async def _generate_story_workflow(story_id: str, task) -> dict:
                 cover_url = await _generate_cover_image(
                     story=story,
                     image_provider=image_provider,
+                    llm_provider=llm_provider,
                     safety_settings=app_settings.safety_settings,
                     character_reference=character_reference_bytes,
                 )
@@ -642,6 +645,7 @@ async def _generate_story_workflow(story_id: str, task) -> dict:
             cover_url = await _generate_cover_image(
                 story=story,
                 image_provider=image_provider,
+                llm_provider=llm_provider,
                 safety_settings=app_settings.safety_settings,
                 character_reference=character_reference_bytes,
             )
@@ -720,20 +724,42 @@ async def _generate_story_workflow(story_id: str, task) -> dict:
                     # Generate illustration for regenerated page
                     try:
                         if is_comic and new_page.panels:
-                            # Generate panel illustrations for comic
-                            logger.info(f"Generating {len(new_page.panels)} panel illustrations for regenerated page {page_number}")
+                            # Save page first
                             story.pages[page_index] = new_page
                             await story.save()
-                            await _generate_comic_panel_illustrations(
-                                page=new_page,
-                                page_index=page_index,
-                                story=story,
-                                image_provider=image_provider,
-                                safety_settings=app_settings.safety_settings,
-                                character_reference=character_reference_bytes,
-                                max_retries=settings.image_max_retries,
-                            )
-                            logger.info(f"Panel illustrations saved for regenerated page {page_number}")
+
+                            # Use same logic as initial generation
+                            if settings.whole_page_generation:
+                                # Generate entire page as single image with critic review
+                                logger.info(
+                                    f"Generating whole-page comic image for regenerated page {page_number} "
+                                    f"({len(new_page.panels)} panels)"
+                                )
+                                await _generate_comic_page_with_critics(
+                                    page=new_page,
+                                    page_index=page_index,
+                                    story=story,
+                                    metadata=metadata,
+                                    image_provider=image_provider,
+                                    llm_provider=llm_provider,
+                                    safety_settings=app_settings.safety_settings,
+                                    character_reference=character_reference_bytes,
+                                    task=task,
+                                    total_pages=story.generation_inputs.page_count,
+                                )
+                            else:
+                                # Generate images for each panel separately (legacy mode)
+                                logger.info(f"Generating {len(new_page.panels)} panel illustrations for regenerated page {page_number}")
+                                await _generate_comic_panel_illustrations(
+                                    page=new_page,
+                                    page_index=page_index,
+                                    story=story,
+                                    image_provider=image_provider,
+                                    safety_settings=app_settings.safety_settings,
+                                    character_reference=character_reference_bytes,
+                                    max_retries=settings.image_max_retries,
+                                )
+                            logger.info(f"Illustrations saved for regenerated page {page_number}")
                         else:
                             # Generate single illustration for storybook
                             logger.info(f"Generating illustration for regenerated page {page_number}")
@@ -789,6 +815,7 @@ async def _generate_story_workflow(story_id: str, task) -> dict:
                 cover_url = await _generate_cover_image(
                     story=story,
                     image_provider=image_provider,
+                    llm_provider=llm_provider,
                     safety_settings=app_settings.safety_settings,
                     character_reference=character_reference_bytes,
                 )
@@ -820,6 +847,7 @@ async def _generate_story_workflow(story_id: str, task) -> dict:
                 cover_url = await _generate_cover_image(
                     story=story,
                     image_provider=image_provider,
+                    llm_provider=llm_provider,
                     safety_settings=app_settings.safety_settings,
                     character_reference=character_reference_bytes,
                 )
@@ -1125,6 +1153,8 @@ async def _generate_comic_page_with_critics(
     character_reference: Optional[List[bytes]] = None,
     max_revisions: int = None,
     quality_threshold: float = None,
+    task=None,
+    total_pages: int = None,
 ) -> None:
     """
     Generate a whole comic page with critic review loop.
@@ -1144,6 +1174,8 @@ async def _generate_comic_page_with_critics(
         character_reference: Character sheet images for consistency
         max_revisions: Maximum regeneration attempts (default from settings)
         quality_threshold: Minimum weighted score to accept (default from settings)
+        task: Celery task for progress updates (optional)
+        total_pages: Total pages for progress calculation (optional)
     """
     # Use settings defaults if not provided
     max_revisions = max_revisions or settings.critic_max_revisions
@@ -1161,6 +1193,26 @@ async def _generate_comic_page_with_critics(
         f"Generating whole-page comic for page {page.page_number} "
         f"(max_revisions={max_revisions}, threshold={quality_threshold}, min_score={min_score_threshold})"
     )
+
+    # Helper to update progress if task is provided
+    def update_progress(sub_phase: str, sub_progress: float = 0.0):
+        if task and total_pages:
+            # Page generation is from 0.3 to 0.8 (0.5 range)
+            # Each page gets equal share of that range
+            page_range = 0.5 / total_pages
+            page_base = 0.3 + (page.page_number - 1) * page_range
+            # Sub-progress within the page (0.0 to 1.0)
+            progress = page_base + (sub_progress * page_range)
+            task.update_state(
+                state="PROGRESS",
+                meta={
+                    "phase": "page_generation",
+                    "progress": min(progress, 0.8),
+                    "message": f"Page {page.page_number}/{total_pages}: {sub_phase}"
+                }
+            )
+
+    update_progress("Starting page generation", 0.0)
 
     # Initialize critics
     composition_critic = CompositionCriticAgent(llm_provider)
@@ -1203,6 +1255,8 @@ async def _generate_comic_page_with_critics(
             )
 
             # 2. Generate complete page image
+            attempt_label = f"(attempt {attempt + 1}/{max_revisions})" if attempt > 0 else ""
+            update_progress(f"Generating image {attempt_label}".strip(), 0.1 + (attempt * 0.1))
             logger.info(
                 f"Generating whole-page image for page {page.page_number} "
                 f"(attempt {attempt + 1}/{max_revisions})"
@@ -1221,6 +1275,7 @@ async def _generate_comic_page_with_critics(
             )
 
             # 3. Run critics in parallel
+            update_progress("Reviewing with AI critics", 0.5)
             logger.info(f"Running 3 critics in parallel for page {page.page_number}")
 
             composition_review, story_review, technical_review = await asyncio.gather(
@@ -1261,6 +1316,8 @@ async def _generate_comic_page_with_critics(
             if aggregated.weighted_score > best_score:
                 best_score = aggregated.weighted_score
                 best_image_bytes = page_bytes
+
+            update_progress(f"Review complete (score: {aggregated.weighted_score:.1f}/10)", 0.8)
 
             # 5. Check if passes threshold
             if aggregated.passes_threshold:
@@ -1345,6 +1402,7 @@ async def _generate_comic_page_with_critics(
             logger.info(
                 f"Page {page.page_number} whole-page generation complete: {page_url}"
             )
+            update_progress("Page complete", 1.0)
 
         except Exception as e:
             logger.error(f"Failed to save page {page.page_number} image: {e}")
@@ -1659,9 +1717,99 @@ RENDERING INSTRUCTIONS:
     return enhanced_prompt
 
 
+async def _check_and_fix_title_safety(
+    title: str,
+    story_topic: str,
+    story_setting: str,
+    llm_provider: BaseLLMProvider,
+) -> tuple[str, bool]:
+    """
+    Check if a title is likely to trigger content filters and generate alternative if needed.
+
+    Args:
+        title: The story title to check
+        story_topic: The story's topic for context
+        story_setting: The story's setting for context
+        llm_provider: LLM provider for checking/regenerating
+
+    Returns:
+        Tuple of (safe_title, was_modified)
+    """
+    # List of words/patterns that commonly trigger content filters
+    flagged_patterns = [
+        "pleasure", "allure", "seduction", "seduce", "sensual", "erotic",
+        "lust", "desire", "passion", "intimate", "naked", "nude", "strip",
+        "pulsing", "throbbing", "moan", "groan", "climax", "ecstasy",
+        "forbidden", "taboo", "sin", "tempt", "ravish", "carnal",
+        "venus", "aphrodite",  # When combined with suggestive words
+    ]
+
+    title_lower = title.lower()
+
+    # Quick check for obvious flags
+    has_flag = any(pattern in title_lower for pattern in flagged_patterns)
+
+    # Also check for suggestive combinations
+    suggestive_combos = [
+        ("violet", "venus"), ("pulsing", "planet"), ("pleasure", "planet"),
+        ("alien", "allure"), ("cosmic", "pleasure"),
+    ]
+    for word1, word2 in suggestive_combos:
+        if word1 in title_lower and word2 in title_lower:
+            has_flag = True
+            break
+
+    if not has_flag:
+        return title, False
+
+    logger.warning(f"Title '{title}' may trigger content filters, generating alternative")
+
+    # Use LLM to generate a safe alternative title
+    prompt = f"""The story title "{title}" may trigger AI image generation safety filters.
+
+Story context:
+- Topic: {story_topic}
+- Setting: {story_setting}
+
+Generate an alternative title that:
+1. Captures the same essence and theme
+2. Is creative and engaging
+3. Avoids words that could be interpreted as suggestive or adult-themed
+4. Is appropriate for all audiences
+5. Keeps the sci-fi/fantasy elements if present
+
+Respond with ONLY the new title, nothing else. No quotes, no explanation."""
+
+    try:
+        response = await llm_provider.generate(prompt, max_tokens=50)
+        new_title = response.strip().strip('"').strip("'")
+
+        # Verify the new title doesn't have the same issues
+        new_title_lower = new_title.lower()
+        still_flagged = any(pattern in new_title_lower for pattern in flagged_patterns)
+
+        if still_flagged or len(new_title) < 3:
+            # Fallback to a generic safe title based on topic
+            topic_words = story_topic.split()[:3]
+            new_title = f"The Adventure of {' '.join(topic_words).title()}"
+
+        logger.info(f"Title revised: '{title}' → '{new_title}'")
+        return new_title, True
+
+    except Exception as e:
+        logger.error(f"Failed to generate alternative title: {e}")
+        # Fallback: just remove problematic words
+        safe_title = title
+        for pattern in flagged_patterns:
+            safe_title = safe_title.replace(pattern.title(), "Cosmic")
+            safe_title = safe_title.replace(pattern, "cosmic")
+        return safe_title, True
+
+
 async def _generate_cover_image(
     story: Storybook,
     image_provider: BaseImageProvider,
+    llm_provider: BaseLLMProvider,
     safety_settings=None,
     character_reference: Optional[List[bytes]] = None,
 ) -> Optional[str]:
@@ -1671,6 +1819,7 @@ async def _generate_cover_image(
     Args:
         story: Complete storybook with metadata
         image_provider: Image generation provider
+        llm_provider: LLM provider for title safety checking
         safety_settings: Safety settings for image generation
         character_reference: Optional list of character reference images for consistency
 
@@ -1678,6 +1827,20 @@ async def _generate_cover_image(
         Signed URL to the uploaded cover image, or None if generation fails
     """
     try:
+        # Check and fix title if needed
+        safe_title, was_modified = await _check_and_fix_title_safety(
+            title=story.title,
+            story_topic=story.generation_inputs.topic,
+            story_setting=story.generation_inputs.setting,
+            llm_provider=llm_provider,
+        )
+
+        if was_modified:
+            # Update story with safe title
+            story.title = safe_title
+            await story.save()
+            logger.info(f"Story title updated to: '{safe_title}'")
+
         logger.info(f"Generating cover image for '{story.title}'")
 
         # Build cover prompt from story metadata

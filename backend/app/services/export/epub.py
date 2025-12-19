@@ -156,21 +156,30 @@ class EPUBExporter(BaseExporter):
             content_parts = ['<html><head><link rel="stylesheet" href="style/main.css"/></head><body><div class="page">']
 
             if is_comic and page.panels:
-                # Comic format: render panel grid
-                panel_count = len(page.panels)
-                grid_class = self._get_grid_class(panel_count)
+                # Comic format: check for whole-page image first, then per-panel
+                if page.illustration_url:
+                    # Whole-page generation: single image for entire page
+                    img_data = await self.download_image(page.illustration_url)
+                    if img_data:
+                        img_filename = f"images/page_{page.page_number:02d}_whole.png"
+                        images.append((img_filename, img_data))
+                        content_parts.append(f'<div class="whole-page"><img src="{img_filename}" alt="Page {page.page_number}"/></div>')
+                else:
+                    # Per-panel generation: render panel grid
+                    panel_count = len(page.panels)
+                    grid_class = self._get_grid_class(panel_count)
 
-                content_parts.append(f'<div class="comic-grid {grid_class}">')
+                    content_parts.append(f'<div class="comic-grid {grid_class}">')
 
-                for panel in page.panels:
-                    if panel.illustration_url:
-                        img_data = await self.download_image(panel.illustration_url)
-                        if img_data:
-                            img_filename = f"images/page_{page.page_number:02d}_panel_{panel.panel_number:02d}.png"
-                            images.append((img_filename, img_data))
-                            content_parts.append(f'<div class="panel"><img src="{img_filename}" alt="Page {page.page_number}, Panel {panel.panel_number}"/></div>')
+                    for panel in page.panels:
+                        if panel.illustration_url:
+                            img_data = await self.download_image(panel.illustration_url)
+                            if img_data:
+                                img_filename = f"images/page_{page.page_number:02d}_panel_{panel.panel_number:02d}.png"
+                                images.append((img_filename, img_data))
+                                content_parts.append(f'<div class="panel"><img src="{img_filename}" alt="Page {page.page_number}, Panel {panel.panel_number}"/></div>')
 
-                content_parts.append('</div>')
+                    content_parts.append('</div>')
             else:
                 # Storybook format: single image + text
                 if page.illustration_url:

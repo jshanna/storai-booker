@@ -52,14 +52,22 @@ class ComicExporter(BaseExporter):
             # Add page images
             for page in story.pages:
                 if is_comic and page.panels:
-                    # Comic format: export each panel as separate image
-                    for panel in page.panels:
-                        if panel.illustration_url:
-                            img_data = await self.download_image(panel.illustration_url)
-                            if img_data:
-                                # Format: page_panel (e.g., 001_1.jpg, 001_2.jpg)
-                                filename = f"{page.page_number:03d}_{panel.panel_number:02d}.jpg"
-                                zf.writestr(filename, img_data)
+                    # Comic format: check for whole-page image first, then per-panel
+                    if page.illustration_url:
+                        # Whole-page generation: single image for entire page
+                        img_data = await self.download_image(page.illustration_url)
+                        if img_data:
+                            filename = f"{page.page_number:03d}.jpg"
+                            zf.writestr(filename, img_data)
+                    else:
+                        # Per-panel generation: export each panel as separate image
+                        for panel in page.panels:
+                            if panel.illustration_url:
+                                img_data = await self.download_image(panel.illustration_url)
+                                if img_data:
+                                    # Format: page_panel (e.g., 001_01.jpg, 001_02.jpg)
+                                    filename = f"{page.page_number:03d}_{panel.panel_number:02d}.jpg"
+                                    zf.writestr(filename, img_data)
                 else:
                     # Storybook format: single image per page
                     if page.illustration_url:

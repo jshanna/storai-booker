@@ -34,8 +34,8 @@ def create_celery_app() -> Celery:
 
         # Task execution settings
         task_track_started=True,  # Track when tasks start
-        task_time_limit=1800,  # 30 minutes max per task
-        task_soft_time_limit=1500,  # 25 minutes soft limit
+        task_time_limit=4500,  # 75 minutes max per task (comics with critics take longer)
+        task_soft_time_limit=3600,  # 60 minutes soft limit
 
         # Worker settings
         worker_prefetch_multiplier=1,  # One task at a time per worker

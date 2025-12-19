@@ -15,6 +15,8 @@ def mock_settings():
         mock.s3_secret_access_key = "test-secret"
         mock.s3_region = "us-east-1"
         mock.s3_bucket_name = "test-bucket"
+        mock.s3_public_url = None  # Use presigned URLs, not public URLs
+        mock.s3_external_endpoint_url = None  # Use same endpoint for URL generation
         yield mock
 
 

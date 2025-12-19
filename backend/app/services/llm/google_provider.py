@@ -11,6 +11,68 @@ from loguru import logger
 from app.services.llm.base import BaseLLMProvider
 
 
+def repair_truncated_json(json_text: str) -> str:
+    """
+    Attempt to repair truncated JSON by closing unclosed brackets and strings.
+
+    Args:
+        json_text: Potentially truncated JSON string
+
+    Returns:
+        Repaired JSON string (may still be invalid)
+    """
+    # Track open brackets/braces
+    stack = []
+    in_string = False
+    escape_next = False
+    last_comma_pos = -1
+
+    for i, char in enumerate(json_text):
+        if escape_next:
+            escape_next = False
+            continue
+
+        if char == '\\':
+            escape_next = True
+            continue
+
+        if char == '"' and not escape_next:
+            in_string = not in_string
+            continue
+
+        if in_string:
+            continue
+
+        if char == ',':
+            last_comma_pos = i
+        elif char in '{[':
+            stack.append(char)
+        elif char == '}':
+            if stack and stack[-1] == '{':
+                stack.pop()
+        elif char == ']':
+            if stack and stack[-1] == '[':
+                stack.pop()
+
+    # If we ended inside a string, close it
+    if in_string:
+        json_text += '"'
+
+    # Remove trailing comma if present (often causes issues)
+    if last_comma_pos > 0 and last_comma_pos == len(json_text.rstrip()) - 1:
+        json_text = json_text[:last_comma_pos] + json_text[last_comma_pos + 1:]
+
+    # Close any unclosed brackets
+    while stack:
+        bracket = stack.pop()
+        if bracket == '{':
+            json_text += '}'
+        elif bracket == '[':
+            json_text += ']'
+
+    return json_text
+
+
 class GoogleGeminiProvider(BaseLLMProvider):
     """Google Gemini LLM provider using native google-genai SDK."""
 
@@ -116,6 +178,8 @@ class GoogleGeminiProvider(BaseLLMProvider):
         1. Ask Gemini to generate JSON matching the schema
         2. Parse and validate with Pydantic
 
+        Includes retry logic for JSON parsing failures with truncation repair.
+
         Args:
             prompt: Text prompt
             response_model: Pydantic model for output structure
@@ -126,17 +190,20 @@ class GoogleGeminiProvider(BaseLLMProvider):
 
         Raises:
             ValidationError: If output doesn't match schema
-            Exception: If generation fails
+            Exception: If generation fails after all retries
         """
-        try:
-            client = self.get_client()
+        last_error = None
 
-            # Get JSON schema from Pydantic model
-            schema = response_model.model_json_schema()
+        for attempt in range(self.max_retries):
+            try:
+                client = self.get_client()
 
-            # Build enhanced prompt with schema instructions
-            schema_str = json.dumps(schema, indent=2)
-            enhanced_prompt = f"""{prompt}
+                # Get JSON schema from Pydantic model
+                schema = response_model.model_json_schema()
+
+                # Build enhanced prompt with schema instructions
+                schema_str = json.dumps(schema, indent=2)
+                enhanced_prompt = f"""{prompt}
 
 Please generate a JSON response matching this exact schema:
 
@@ -147,85 +214,125 @@ Important:
 - All required fields must be present
 - Use appropriate data types as specified in the schema
 - Be creative and detailed in your responses
-- Do not wrap the JSON in markdown code blocks"""
+- Do not wrap the JSON in markdown code blocks
+- Keep text content concise to avoid truncation"""
 
-            # Build generation config
-            config = GenerateContentConfig(
-                temperature=self.temperature,
-                max_output_tokens=8192,
-            )
+                # Build generation config with increased token limit
+                config = GenerateContentConfig(
+                    temperature=self.temperature,
+                    max_output_tokens=16384,  # Increased from 8192 to reduce truncation
+                )
 
-            # Generate
-            logger.debug(f"Generating structured output for {response_model.__name__}")
+                # Generate
+                logger.debug(
+                    f"Generating structured output for {response_model.__name__} "
+                    f"(attempt {attempt + 1}/{self.max_retries})"
+                )
 
-            response = await asyncio.to_thread(
-                client.models.generate_content,
-                model=self.model,
-                contents=enhanced_prompt,
-                config=config,
-            )
+                response = await asyncio.to_thread(
+                    client.models.generate_content,
+                    model=self.model,
+                    contents=enhanced_prompt,
+                    config=config,
+                )
 
-            # Extract JSON
-            if not response.candidates or len(response.candidates) == 0:
-                # Check if content was blocked by safety filters
-                if hasattr(response, 'prompt_feedback'):
-                    feedback = response.prompt_feedback
-                    logger.warning(f"Gemini blocked request. Prompt feedback: {feedback}")
-                    raise ValueError(f"Content blocked by Gemini safety filters: {feedback}")
-                raise ValueError("No candidates returned from Gemini API")
+                # Extract JSON
+                if not response.candidates or len(response.candidates) == 0:
+                    # Check if content was blocked by safety filters
+                    if hasattr(response, 'prompt_feedback'):
+                        feedback = response.prompt_feedback
+                        logger.warning(f"Gemini blocked request. Prompt feedback: {feedback}")
+                        raise ValueError(f"Content blocked by Gemini safety filters: {feedback}")
+                    raise ValueError("No candidates returned from Gemini API")
 
-            candidate = response.candidates[0]
-            if not candidate.content or not candidate.content.parts:
-                raise ValueError("No content in response from Gemini API")
+                candidate = response.candidates[0]
+                if not candidate.content or not candidate.content.parts:
+                    raise ValueError("No content in response from Gemini API")
 
-            json_text = candidate.content.parts[0].text.strip()
+                json_text = candidate.content.parts[0].text.strip()
 
-            # Remove markdown code blocks if present
-            if json_text.startswith("```json"):
-                json_text = json_text[7:]  # Remove ```json
-            if json_text.startswith("```"):
-                json_text = json_text[3:]  # Remove ```
-            if json_text.endswith("```"):
-                json_text = json_text[:-3]  # Remove trailing ```
+                # Remove markdown code blocks if present
+                if json_text.startswith("```json"):
+                    json_text = json_text[7:]  # Remove ```json
+                if json_text.startswith("```"):
+                    json_text = json_text[3:]  # Remove ```
+                if json_text.endswith("```"):
+                    json_text = json_text[:-3]  # Remove trailing ```
 
-            json_text = json_text.strip()
+                json_text = json_text.strip()
 
-            # Sanitize control characters in JSON strings
-            def sanitize_json_string(match):
-                s = match.group(0)
-                # Replace literal newlines, tabs, and carriage returns with escaped versions
-                s = s.replace('\n', '\\n')
-                s = s.replace('\r', '\\r')
-                s = s.replace('\t', '\\t')
-                # Remove other control characters (0x00-0x1F except those we just escaped)
-                s = re.sub(r'[\x00-\x08\x0B\x0C\x0E-\x1F]', '', s)
-                return s
+                # Sanitize control characters in JSON strings
+                def sanitize_json_string(match):
+                    s = match.group(0)
+                    # Replace literal newlines, tabs, and carriage returns with escaped versions
+                    s = s.replace('\n', '\\n')
+                    s = s.replace('\r', '\\r')
+                    s = s.replace('\t', '\\t')
+                    # Remove other control characters (0x00-0x1F except those we just escaped)
+                    s = re.sub(r'[\x00-\x08\x0B\x0C\x0E-\x1F]', '', s)
+                    return s
 
-            # Apply sanitization to string values in JSON
-            json_text = re.sub(r'"([^"\\]*(\\.[^"\\]*)*)"', sanitize_json_string, json_text)
+                # Apply sanitization to string values in JSON
+                json_text = re.sub(r'"([^"\\]*(\\.[^"\\]*)*)"', sanitize_json_string, json_text)
 
-            # Parse JSON
-            try:
-                data = json.loads(json_text)
-            except json.JSONDecodeError as e:
-                logger.error(f"Failed to parse JSON: {e}")
-                logger.error(f"Raw response: {json_text[:500]}")
-                raise ValueError(f"Invalid JSON from Gemini: {e}")
+                # Parse JSON with repair fallback
+                data = None
+                try:
+                    data = json.loads(json_text)
+                except json.JSONDecodeError as e:
+                    logger.warning(f"Initial JSON parse failed: {e}")
+                    logger.debug(f"Attempting to repair truncated JSON...")
 
-            # Validate with Pydantic
-            try:
-                result = response_model.model_validate(data)
-                logger.debug(f"Successfully parsed {response_model.__name__}")
-                return result
+                    # Try to repair truncated JSON
+                    repaired_json = repair_truncated_json(json_text)
+                    try:
+                        data = json.loads(repaired_json)
+                        logger.info("Successfully repaired truncated JSON")
+                    except json.JSONDecodeError as repair_error:
+                        logger.error(f"JSON repair failed: {repair_error}")
+                        logger.error(f"Raw response (first 500 chars): {json_text[:500]}")
+                        logger.error(f"Raw response (last 200 chars): {json_text[-200:]}")
+                        raise ValueError(f"Invalid JSON from Gemini (repair failed): {e}")
 
-            except ValidationError as e:
-                logger.error(f"Pydantic validation failed: {e}")
-                logger.error(f"Data: {json.dumps(data, indent=2)[:500]}")
+                # Validate with Pydantic
+                try:
+                    result = response_model.model_validate(data)
+                    logger.debug(f"Successfully parsed {response_model.__name__}")
+                    return result
+
+                except ValidationError as e:
+                    logger.error(f"Pydantic validation failed: {e}")
+                    logger.error(f"Data: {json.dumps(data, indent=2)[:500]}")
+                    raise
+
+            except ValueError as e:
+                # JSON parsing or content blocking errors - retry
+                last_error = e
+                error_msg = str(e).lower()
+
+                # Don't retry safety blocks
+                if "blocked" in error_msg or "safety" in error_msg:
+                    raise
+
+                if attempt < self.max_retries - 1:
+                    wait_time = 2 ** attempt
+                    logger.warning(
+                        f"Structured generation failed (attempt {attempt + 1}), "
+                        f"retrying in {wait_time}s: {e}"
+                    )
+                    await asyncio.sleep(wait_time)
+                else:
+                    logger.error(f"Structured generation failed after {self.max_retries} attempts")
+                    raise
+
+            except Exception as e:
+                logger.error(f"Gemini structured generation failed: {e}")
                 raise
 
-        except Exception as e:
-            logger.error(f"Gemini structured generation failed: {e}")
-            raise
+        # Should not reach here, but just in case
+        if last_error:
+            raise last_error
+        raise RuntimeError("Structured generation failed unexpectedly")
 
     async def generate_with_system_message(
         self,

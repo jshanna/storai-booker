@@ -445,7 +445,7 @@ async def _generate_story_workflow(story_id: str, task) -> dict:
     # Determine if this is a comic format
     is_comic = story.generation_inputs.format == "comic"
     if is_comic:
-        logger.info(f"Generating comic with {story.generation_inputs.panels_per_page or 4} panels per page")
+        logger.info("Generating comic format with dynamic panel count per page")
 
     # Generate pages sequentially (parallel generation would require more complex coordination)
     for i in range(story.generation_inputs.page_count):
@@ -1104,12 +1104,16 @@ async def _generate_comic_panel_illustrations(
         logger.warning(f"No panels found for page {page.page_number}")
         return
 
-    panels_per_page = len(page.panels)
-    logger.info(f"Generating illustrations for {panels_per_page} panels on page {page.page_number}")
+    panel_count = len(page.panels)
+    logger.info(f"Generating illustrations for {panel_count} panels on page {page.page_number}")
 
     # Get aspect ratios for each panel position based on layout
-    panel_aspect_ratios = get_panel_aspect_ratios(panels_per_page, page.layout)
+    panel_aspect_ratios = get_panel_aspect_ratios(panel_count, page.layout)
     logger.debug(f"Panel aspect ratios for layout '{page.layout}': {panel_aspect_ratios}")
+
+    # Track success/failure for summary
+    success_count = 0
+    failed_panels = []
 
     for panel_idx, panel in enumerate(page.panels):
         panel_num = panel.panel_number
@@ -1172,6 +1176,7 @@ async def _generate_comic_panel_illustrations(
                 await story.save()
 
                 logger.info(f"Panel {panel_num} illustration saved: {panel_url}")
+                success_count += 1
                 break  # Success, move to next panel
 
             except Exception as e:
@@ -1181,6 +1186,7 @@ async def _generate_comic_panel_illustrations(
                         f"Panel {panel_num} illustration blocked by safety filters, "
                         f"skipping panel"
                     )
+                    failed_panels.append((panel_num, "safety_blocked"))
                     break  # Don't retry safety blocks
 
                 logger.error(
@@ -1190,11 +1196,25 @@ async def _generate_comic_panel_illustrations(
 
                 if attempt >= max_retries - 1:
                     logger.error(f"Exhausted all retries for panel {panel_num}")
+                    failed_panels.append((panel_num, str(e)[:100]))
                 else:
                     # Exponential backoff
                     wait_time = 2 ** attempt
                     logger.info(f"Retrying in {wait_time} seconds...")
                     await asyncio.sleep(wait_time)
+
+    # Log summary for this page
+    if failed_panels:
+        logger.warning(
+            f"Page {page.page_number} panel generation summary: "
+            f"{success_count}/{panel_count} succeeded, "
+            f"failed panels: {[p[0] for p in failed_panels]}"
+        )
+    else:
+        logger.info(
+            f"Page {page.page_number} panel generation complete: "
+            f"{success_count}/{panel_count} panels succeeded"
+        )
 
 
 def get_panel_aspect_ratios(panel_count: int, layout: Optional[str]) -> list[str]:
@@ -1218,14 +1238,14 @@ def get_panel_aspect_ratios(panel_count: int, layout: Optional[str]) -> list[str
     if panel_count == 1 or layout_lower == "1x1":
         return ["3:4"]  # Portrait full page
 
-    # 2 panels
+    # 2 panels - default to stacked (1x2) for better readability
     if panel_count == 2:
-        if layout_lower in ["1x2", "stacked"]:
-            # Stacked vertically - wide panels
-            return ["16:9", "16:9"]
-        else:  # 2x1 side by side (default)
+        if layout_lower in ["2x1", "side-by-side", "horizontal"]:
             # Side by side - tall panels
             return ["3:4", "3:4"]
+        else:  # 1x2 stacked (default)
+            # Stacked vertically - wide panels
+            return ["16:9", "16:9"]
 
     # 3 panels
     if panel_count == 3:

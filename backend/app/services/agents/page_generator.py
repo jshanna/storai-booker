@@ -219,7 +219,7 @@ class PageGeneratorAgent:
         try:
             logger.info(
                 f"Generating comic page {page_number}/{inputs.page_count} "
-                f"with {inputs.panels_per_page or 4} panels"
+                f"(dynamic panel count based on story pacing)"
             )
 
             # Build the comic page generation prompt
@@ -236,9 +236,28 @@ class PageGeneratorAgent:
                 response_model=ComicPageGenerationOutput,
             )
 
-            # Convert LLM output to model objects
+            # Validate that we got at least one panel
+            if not comic_output.panels:
+                logger.error(f"LLM returned no panels for page {page_number}, using fallback")
+                # Create a single fallback panel
+                from app.services.llm.prompts.comic_page_generation import PanelOutput
+                comic_output.panels = [PanelOutput(
+                    panel_number=1,
+                    illustration_prompt=f"Scene from page {page_number}: {page_outline}",
+                    dialogue=[],
+                    caption=None,
+                    sound_effects=[],
+                )]
+                comic_output.layout = "1x1"
+
+            logger.info(
+                f"LLM generated {len(comic_output.panels)} panels for page {page_number}, "
+                f"layout: {comic_output.layout}"
+            )
+
+            # Convert LLM output to model objects with sequential panel numbers
             panels = []
-            for panel_out in comic_output.panels:
+            for idx, panel_out in enumerate(comic_output.panels):
                 # Convert dialogue entries (normalize positions)
                 dialogue = [
                     DialogueEntry(
@@ -260,8 +279,15 @@ class PageGeneratorAgent:
                     for s in panel_out.sound_effects
                 ]
 
+                # Use sequential panel number (1-indexed) regardless of LLM output
+                sequential_panel_num = idx + 1
+                if panel_out.panel_number != sequential_panel_num:
+                    logger.debug(
+                        f"Correcting panel number from {panel_out.panel_number} to {sequential_panel_num}"
+                    )
+
                 panel = Panel(
-                    panel_number=panel_out.panel_number,
+                    panel_number=sequential_panel_num,
                     illustration_prompt=panel_out.illustration_prompt,
                     illustration_url=None,  # Set during image generation
                     dialogue=dialogue,

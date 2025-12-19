@@ -62,7 +62,7 @@ def get_layout_for_panel_count(panel_count: int) -> str:
     """Get the default layout description for a given panel count."""
     layouts = {
         1: "1x1",  # Single full panel
-        2: "2x1",  # Two side-by-side panels
+        2: "1x2",  # Two stacked panels (vertically)
         3: "1-2",  # One on top, two on bottom
         4: "2x2",  # 2x2 grid
         5: "2-3",  # Two on top, three on bottom
@@ -160,7 +160,7 @@ For EACH panel, provide:
 
 **Layout Options** (choose based on panel count):
 - 1 panel: "1x1" (full page)
-- 2 panels: "2x1" (side by side) or "1x2" (stacked)
+- 2 panels: "1x2" (stacked vertically - preferred) or "2x1" (side by side)
 - 3 panels: "1-2" (1 top, 2 bottom) or "2-1" (2 top, 1 bottom)
 - 4 panels: "2x2" (grid)
 - 5 panels: "2-3" (2 top, 3 bottom)

@@ -22,7 +22,8 @@ function getGridTemplate(panelCount: number): { columns: string; rows: string } 
     case 1:
       return { columns: '1fr', rows: '1fr' };
     case 2:
-      return { columns: '1fr 1fr', rows: '1fr' };
+      // Stacked vertically for better readability
+      return { columns: '1fr', rows: '1fr 1fr' };
     case 3:
       // 1 on top, 2 on bottom (handled with grid areas)
       return { columns: '1fr 1fr', rows: '1fr 1fr' };

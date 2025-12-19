@@ -217,7 +217,7 @@ class PDFExporter(BaseExporter):
         if panel_count == 1:
             cols, rows = 1, 1
         elif panel_count == 2:
-            cols, rows = 2, 1
+            cols, rows = 1, 2  # Stacked vertically
         elif panel_count <= 4:
             cols, rows = 2, 2
         elif panel_count <= 6:

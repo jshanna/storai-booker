@@ -92,16 +92,21 @@ export function ShareDialog({ story, trigger, open: controlledOpen, onOpenChange
 
   const isPending = enableSharing.isPending || disableSharing.isPending;
 
+  // Only show trigger in uncontrolled mode (when open/onOpenChange aren't provided)
+  const isControlled = controlledOpen !== undefined;
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        {trigger || (
-          <Button variant="outline" size="sm">
-            <Share2 className="h-4 w-4 mr-2" />
-            Share
-          </Button>
-        )}
-      </DialogTrigger>
+      {!isControlled && (
+        <DialogTrigger asChild>
+          {trigger || (
+            <Button variant="outline" size="sm">
+              <Share2 className="h-4 w-4 mr-2" />
+              Share
+            </Button>
+          )}
+        </DialogTrigger>
+      )}
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Share Story</DialogTitle>

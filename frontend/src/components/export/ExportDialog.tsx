@@ -100,7 +100,7 @@ export function ExportDialog({
             <Button
               key={option.format}
               variant="outline"
-              className="h-auto p-4"
+              className="h-auto p-4 justify-start"
               onClick={() => handleExport(option.format)}
               disabled={downloading !== null}
             >

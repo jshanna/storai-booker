@@ -3,7 +3,7 @@
  */
 
 import { useState } from 'react';
-import { FileText, Image, BookOpen, Download, Loader2 } from 'lucide-react';
+import { FileText, Image, BookOpen, Loader2 } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -100,11 +100,11 @@ export function ExportDialog({
             <Button
               key={option.format}
               variant="outline"
-              className="h-auto p-4 justify-start text-left"
+              className="h-auto p-4"
               onClick={() => handleExport(option.format)}
               disabled={downloading !== null}
             >
-              <div className="flex items-center gap-3 w-full">
+              <div className="flex items-center gap-3">
                 <div className="flex-shrink-0 text-muted-foreground">
                   {downloading === option.format ? (
                     <Loader2 className="h-5 w-5 animate-spin" />
@@ -112,13 +112,12 @@ export function ExportDialog({
                     option.icon
                   )}
                 </div>
-                <div className="flex-1 min-w-0">
+                <div className="text-left">
                   <div className="font-medium">{option.name}</div>
                   <div className="text-sm text-muted-foreground">
                     {option.description}
                   </div>
                 </div>
-                <Download className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
               </div>
             </Button>
           ))}

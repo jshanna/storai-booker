@@ -8,6 +8,8 @@ import type {
   SharedStory,
   Comment,
   CommentListResponse,
+  PublicStoriesListResponse,
+  PublicStoriesListParams,
 } from '@/types/api';
 
 /**
@@ -67,6 +69,18 @@ export const deleteComment = async (commentId: string): Promise<void> => {
 };
 
 /**
+ * List all publicly shared stories with pagination.
+ */
+export const listPublicStories = async (
+  params?: PublicStoriesListParams
+): Promise<PublicStoriesListResponse> => {
+  const response = await apiClient.get<PublicStoriesListResponse>('/shared', {
+    params,
+  });
+  return response.data;
+};
+
+/**
  * Sharing API namespace for easier imports.
  */
 export const sharingApi = {
@@ -76,4 +90,5 @@ export const sharingApi = {
   listComments,
   createComment,
   deleteComment,
+  listPublicStories,
 };

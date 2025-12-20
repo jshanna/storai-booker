@@ -6,6 +6,7 @@ import { useMutation, useQuery, useQueryClient, useInfiniteQuery } from '@tansta
 import { sharingApi } from '@/lib/api';
 import { useToast } from './use-toast';
 import { storyKeys } from './useStories';
+import type { PublicStoriesListParams } from '@/types/api';
 
 /**
  * Query keys for sharing-related queries.
@@ -16,6 +17,8 @@ export const sharingKeys = {
   sharedStory: (token: string) => [...sharingKeys.shared(), token] as const,
   comments: () => [...sharingKeys.all, 'comments'] as const,
   commentList: (token: string, page?: number) => [...sharingKeys.comments(), token, page] as const,
+  publicStories: () => [...sharingKeys.all, 'public'] as const,
+  publicStoriesList: (params?: PublicStoriesListParams) => [...sharingKeys.publicStories(), params] as const,
 };
 
 /**
@@ -181,5 +184,16 @@ export const useDeleteComment = (_shareToken: string) => {
         variant: 'destructive',
       });
     },
+  });
+};
+
+/**
+ * Hook to fetch public stories with pagination.
+ */
+export const usePublicStories = (params?: PublicStoriesListParams) => {
+  return useQuery({
+    queryKey: sharingKeys.publicStoriesList(params),
+    queryFn: () => sharingApi.listPublicStories(params),
+    staleTime: 60000, // 1 minute
   });
 };

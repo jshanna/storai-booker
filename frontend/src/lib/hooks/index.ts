@@ -11,3 +11,4 @@ export * from './useAuth';
 export * from './useTemplates';
 export * from './useRouteAnnouncer';
 export * from './useSharing';
+export * from './useBookmarks';

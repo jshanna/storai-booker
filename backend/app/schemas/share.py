@@ -38,3 +38,28 @@ class SharedStoryResponse(BaseModel):
     owner_name: Optional[str] = Field(default=None, description="Story owner's display name")
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class PublicStoryListItem(BaseModel):
+    """Minimal response schema for a story in the public browse list."""
+
+    id: str
+    title: str
+    cover_image_url: Optional[str] = None
+    format: str = Field(..., description="Story format: storybook or comic")
+    page_count: int = Field(..., description="Number of pages in the story")
+    owner_name: Optional[str] = None
+    share_token: str
+    shared_at: datetime
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class PublicStoriesListResponse(BaseModel):
+    """Paginated response for public stories browse."""
+
+    stories: List[PublicStoryListItem]
+    total: int
+    page: int
+    page_size: int

@@ -11,6 +11,7 @@ from app.models.storybook import Storybook
 from app.models.settings import AppSettings
 from app.models.user import User
 from app.models.comment import Comment
+from app.models.bookmark import Bookmark
 
 
 @pytest.fixture(scope="session")
@@ -30,7 +31,7 @@ async def init_test_db():
 
     await init_beanie(
         database=database,
-        document_models=[Storybook, AppSettings, User, Comment],
+        document_models=[Storybook, AppSettings, User, Comment, Bookmark],
     )
 
     yield client
@@ -41,6 +42,7 @@ async def init_test_db():
         await AppSettings.delete_all()
         await User.delete_all()
         await Comment.delete_all()
+        await Bookmark.delete_all()
     except Exception:
         pass  # Ignore cleanup errors
     finally:

@@ -336,3 +336,68 @@ export interface ValidationError {
 export interface ValidationErrorResponse {
   detail: ValidationError[];
 }
+
+// ============================================================================
+// Public Stories & Bookmarks Types
+// ============================================================================
+
+export interface PublicStoryListItem {
+  id: string;
+  title: string;
+  cover_image_url?: string | null;
+  format: 'storybook' | 'comic';
+  page_count: number;
+  owner_name?: string | null;
+  share_token: string;
+  shared_at: string;
+  created_at: string;
+}
+
+export interface PublicStoriesListResponse {
+  stories: PublicStoryListItem[];
+  total: number;
+  page: number;
+  page_size: number;
+}
+
+export interface PublicStoriesListParams {
+  page?: number;
+  page_size?: number;
+  format?: 'storybook' | 'comic';
+}
+
+export interface Bookmark {
+  id: string;
+  story_id: string;
+  created_at: string;
+}
+
+export interface BookmarkWithStory {
+  id: string;
+  story_id: string;
+  story_title: string;
+  cover_image_url?: string | null;
+  format: 'storybook' | 'comic';
+  page_count: number;
+  owner_name?: string | null;
+  share_token: string;
+  created_at: string;
+  story_created_at: string;
+}
+
+export interface BookmarkListResponse {
+  bookmarks: BookmarkWithStory[];
+  total: number;
+  page: number;
+  page_size: number;
+}
+
+export interface BookmarkListParams {
+  page?: number;
+  page_size?: number;
+}
+
+export interface BookmarkStatus {
+  is_bookmarked: boolean;
+  bookmark_id?: string | null;
+}

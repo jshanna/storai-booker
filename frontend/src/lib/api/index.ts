@@ -9,3 +9,4 @@ export { authApi } from './auth';
 export { exportsApi } from './exports';
 export { templatesApi } from './templates';
 export { sharingApi } from './sharing';
+export { bookmarksApi } from './bookmarks';

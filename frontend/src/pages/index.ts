@@ -12,3 +12,5 @@ export { LoginPage } from './LoginPage';
 export { RegisterPage } from './RegisterPage';
 export { ProfilePage } from './ProfilePage';
 export { OAuthCallbackPage } from './OAuthCallbackPage';
+export { BrowsePage } from './BrowsePage';
+export { SavedStoriesPage } from './SavedStoriesPage';

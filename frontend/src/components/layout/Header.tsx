@@ -16,10 +16,17 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useAuth } from '@/lib/hooks/useAuth';
 
-const navigation = [
+// Public navigation items
+const publicNavigation = [
   { name: 'Home', href: '/' },
+  { name: 'Browse', href: '/browse' },
   { name: 'Generate', href: '/generate' },
+];
+
+// Auth-only navigation items
+const authNavigation = [
   { name: 'Library', href: '/library' },
+  { name: 'Saved', href: '/saved' },
   { name: 'Settings', href: '/settings' },
 ];
 
@@ -44,7 +51,25 @@ export function Header() {
 
         {/* Navigation */}
         <nav aria-label="Main navigation" className="flex items-center space-x-3 sm:space-x-6 flex-1">
-          {navigation.map((item) => {
+          {/* Public navigation - always visible */}
+          {publicNavigation.map((item) => {
+            const isActive = location.pathname === item.href;
+            return (
+              <Link
+                key={item.href}
+                to={item.href}
+                aria-current={isActive ? 'page' : undefined}
+                className={cn(
+                  'text-xs sm:text-sm font-medium transition-colors hover:text-primary whitespace-nowrap',
+                  isActive ? 'text-foreground' : 'text-foreground/60'
+                )}
+              >
+                {item.name}
+              </Link>
+            );
+          })}
+          {/* Auth navigation - only when authenticated */}
+          {isAuthenticated && authNavigation.map((item) => {
             const isActive = location.pathname === item.href;
             return (
               <Link

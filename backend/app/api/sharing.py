@@ -10,7 +10,7 @@ from app.models.storybook import Storybook
 from app.models.comment import Comment
 from app.models.user import User
 from app.schemas.comment import CommentCreateRequest, CommentResponse, CommentListResponse
-from app.schemas.share import ShareResponse, SharedStoryResponse
+from app.schemas.share import ShareResponse, SharedStoryResponse, PublicStoryListItem, PublicStoriesListResponse
 from app.schemas.story import PageResponse
 from app.services.sanitizer import sanitizer
 from app.api.dependencies import get_current_active_user, get_optional_user
@@ -26,6 +26,69 @@ def get_share_url(request: Request, token: str) -> str:
     if "/api" in base_url:
         base_url = base_url.replace("/api", "")
     return f"{base_url}/shared/{token}"
+
+
+@router.get("/shared", response_model=PublicStoriesListResponse)
+async def list_public_stories(
+    page: int = Query(1, ge=1, description="Page number"),
+    page_size: int = Query(12, ge=1, le=50, description="Items per page"),
+    format: Optional[str] = Query(None, pattern="^(storybook|comic)$", description="Filter by format"),
+):
+    """
+    List all publicly shared stories with pagination.
+
+    This is a public endpoint - no authentication required.
+    Only returns completed stories that have sharing enabled.
+    """
+    try:
+        # Build query for shared, completed stories
+        query = {"is_shared": True, "status": "complete"}
+        if format:
+            query["generation_inputs.format"] = format
+
+        # Get total count
+        total = await Storybook.find(query).count()
+
+        # Get paginated results (newest shared first)
+        skip = (page - 1) * page_size
+        stories = await Storybook.find(query).sort("-shared_at").skip(skip).limit(page_size).to_list()
+
+        # Build response with owner names
+        story_items = []
+        for story in stories:
+            # Try to get owner name
+            owner_name = None
+            try:
+                owner = await User.get(PydanticObjectId(story.user_id))
+                if owner:
+                    owner_name = owner.full_name or "Anonymous"
+            except Exception:
+                pass
+
+            story_items.append(PublicStoryListItem(
+                id=str(story.id),
+                title=story.title,
+                cover_image_url=story.cover_image_url,
+                format=story.generation_inputs.format,
+                page_count=story.generation_inputs.page_count,
+                owner_name=owner_name,
+                share_token=story.share_token,
+                shared_at=story.shared_at,
+                created_at=story.created_at,
+            ))
+
+        return PublicStoriesListResponse(
+            stories=story_items,
+            total=total,
+            page=page,
+            page_size=page_size,
+        )
+    except Exception as e:
+        logger.error(f"Failed to list public stories: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to list public stories: {str(e)}",
+        )
 
 
 @router.post("/stories/{story_id}/share", response_model=ShareResponse)

@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,6 +16,7 @@ import { loginSchema, type LoginFormData } from '@/lib/schemas/auth';
 import { useLogin } from '@/lib/hooks/useAuth';
 
 export function LoginForm() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
   const { login, error, clearError, isLoading } = useLogin();
@@ -54,11 +56,11 @@ export function LoginForm() {
       )}
 
       <div className="space-y-2">
-        <Label htmlFor="email">Email</Label>
+        <Label htmlFor="email">{t('auth.email')}</Label>
         <Input
           id="email"
           type="email"
-          placeholder="you@example.com"
+          placeholder={t('auth.emailPlaceholder')}
           autoComplete="email"
           disabled={isLoading}
           {...register('email')}
@@ -70,19 +72,19 @@ export function LoginForm() {
 
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <Label htmlFor="password">Password</Label>
+          <Label htmlFor="password">{t('auth.password')}</Label>
           <Link
             to="/forgot-password"
             className="text-sm text-muted-foreground hover:text-primary"
           >
-            Forgot password?
+            {t('auth.forgotPassword')}
           </Link>
         </div>
         <div className="relative">
           <Input
             id="password"
             type={showPassword ? 'text' : 'password'}
-            placeholder="Enter your password"
+            placeholder={t('auth.passwordPlaceholder')}
             autoComplete="current-password"
             disabled={isLoading}
             {...register('password')}
@@ -109,13 +111,13 @@ export function LoginForm() {
 
       <Button type="submit" className="w-full" disabled={isLoading}>
         {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-        Sign in
+        {isLoading ? t('auth.signingIn') : t('auth.signIn')}
       </Button>
 
       <p className="text-center text-sm text-muted-foreground">
-        Don't have an account?{' '}
+        {t('auth.noAccount')}{' '}
         <Link to="/register" className="text-primary hover:underline">
-          Sign up
+          {t('auth.signUp')}
         </Link>
       </p>
     </form>

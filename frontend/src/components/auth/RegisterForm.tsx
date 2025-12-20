@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Link, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { Eye, EyeOff, Loader2, Check, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,6 +17,7 @@ import { useRegister } from '@/lib/hooks/useAuth';
 import { cn } from '@/lib/utils';
 
 export function RegisterForm() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { register: registerUser, error, clearError, isLoading } = useRegister();
   const [showPassword, setShowPassword] = useState(false);
@@ -70,11 +72,11 @@ export function RegisterForm() {
       )}
 
       <div className="space-y-2">
-        <Label htmlFor="full_name">Name (optional)</Label>
+        <Label htmlFor="full_name">{t('auth.name')}</Label>
         <Input
           id="full_name"
           type="text"
-          placeholder="Your name"
+          placeholder={t('auth.namePlaceholder')}
           autoComplete="name"
           disabled={isLoading}
           {...register('full_name')}
@@ -85,11 +87,11 @@ export function RegisterForm() {
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="email">Email</Label>
+        <Label htmlFor="email">{t('auth.email')}</Label>
         <Input
           id="email"
           type="email"
-          placeholder="you@example.com"
+          placeholder={t('auth.emailPlaceholder')}
           autoComplete="email"
           disabled={isLoading}
           {...register('email')}
@@ -100,12 +102,12 @@ export function RegisterForm() {
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="password">Password</Label>
+        <Label htmlFor="password">{t('auth.password')}</Label>
         <div className="relative">
           <Input
             id="password"
             type={showPassword ? 'text' : 'password'}
-            placeholder="Create a password"
+            placeholder={t('auth.passwordPlaceholder')}
             autoComplete="new-password"
             disabled={isLoading}
             {...register('password')}
@@ -153,12 +155,12 @@ export function RegisterForm() {
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="confirmPassword">Confirm Password</Label>
+        <Label htmlFor="confirmPassword">{t('auth.confirmPassword')}</Label>
         <div className="relative">
           <Input
             id="confirmPassword"
             type={showConfirmPassword ? 'text' : 'password'}
-            placeholder="Confirm your password"
+            placeholder={t('auth.confirmPasswordPlaceholder')}
             autoComplete="new-password"
             disabled={isLoading}
             {...register('confirmPassword')}
@@ -185,13 +187,13 @@ export function RegisterForm() {
 
       <Button type="submit" className="w-full" disabled={isLoading}>
         {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-        Create account
+        {isLoading ? t('auth.signingUp') : t('auth.signUp')}
       </Button>
 
       <p className="text-center text-sm text-muted-foreground">
-        Already have an account?{' '}
+        {t('auth.hasAccount')}{' '}
         <Link to="/login" className="text-primary hover:underline">
-          Sign in
+          {t('auth.signIn')}
         </Link>
       </p>
     </form>

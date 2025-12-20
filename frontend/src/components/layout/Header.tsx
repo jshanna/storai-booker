@@ -3,9 +3,11 @@
  */
 
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { BookOpen, User, LogOut, Settings } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { DarkModeToggle } from './DarkModeToggle';
+import { LanguageSelector } from './LanguageSelector';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -16,21 +18,21 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useAuth } from '@/lib/hooks/useAuth';
 
-// Public navigation items
+// Navigation item keys for translation
 const publicNavigation = [
-  { name: 'Home', href: '/' },
-  { name: 'Browse', href: '/browse' },
-  { name: 'Generate', href: '/generate' },
+  { key: 'home', href: '/' },
+  { key: 'browse', href: '/browse' },
+  { key: 'generate', href: '/generate' },
 ];
 
-// Auth-only navigation items
 const authNavigation = [
-  { name: 'Library', href: '/library' },
-  { name: 'Saved', href: '/saved' },
-  { name: 'Settings', href: '/settings' },
+  { key: 'library', href: '/library' },
+  { key: 'saved', href: '/saved' },
+  { key: 'settings', href: '/settings' },
 ];
 
 export function Header() {
+  const { t } = useTranslation();
   const location = useLocation();
   const navigate = useNavigate();
   const { user, isAuthenticated, logout, isLoading } = useAuth();
@@ -64,7 +66,7 @@ export function Header() {
                   isActive ? 'text-foreground' : 'text-foreground/60'
                 )}
               >
-                {item.name}
+                {t(`nav.${item.key}`)}
               </Link>
             );
           })}
@@ -81,7 +83,7 @@ export function Header() {
                   isActive ? 'text-foreground' : 'text-foreground/60'
                 )}
               >
-                {item.name}
+                {t(`nav.${item.key}`)}
               </Link>
             );
           })}
@@ -89,6 +91,8 @@ export function Header() {
 
         {/* Right side actions */}
         <div className="flex items-center gap-2">
+          {/* Language selector */}
+          <LanguageSelector />
           {/* Dark mode toggle */}
           <DarkModeToggle />
 
@@ -124,13 +128,13 @@ export function Header() {
                 <DropdownMenuItem asChild>
                   <Link to="/profile" className="cursor-pointer">
                     <User className="mr-2 h-4 w-4" />
-                    Profile
+                    {t('nav.profile')}
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
                   <Link to="/settings" className="cursor-pointer">
                     <Settings className="mr-2 h-4 w-4" />
-                    Settings
+                    {t('nav.settings')}
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
@@ -139,17 +143,17 @@ export function Header() {
                   className="cursor-pointer text-destructive focus:text-destructive"
                 >
                   <LogOut className="mr-2 h-4 w-4" />
-                  Sign out
+                  {t('nav.signOut')}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
             <div className="flex items-center gap-2">
               <Button variant="ghost" size="sm" asChild>
-                <Link to="/login">Sign in</Link>
+                <Link to="/login">{t('nav.signIn')}</Link>
               </Button>
               <Button size="sm" asChild className="hidden sm:inline-flex">
-                <Link to="/register">Sign up</Link>
+                <Link to="/register">{t('nav.signUp')}</Link>
               </Button>
             </div>
           )}

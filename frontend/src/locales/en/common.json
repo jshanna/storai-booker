@@ -1,0 +1,451 @@
+{
+  "nav": {
+    "home": "Home",
+    "browse": "Browse",
+    "generate": "Generate",
+    "library": "Library",
+    "saved": "Saved",
+    "settings": "Settings",
+    "signIn": "Sign in",
+    "signUp": "Sign up",
+    "signOut": "Sign out",
+    "profile": "Profile"
+  },
+  "home": {
+    "title": "Create Magical Stories",
+    "subtitle": "AI-powered storybook and comic generation for children",
+    "cta": "Create Your First Story",
+    "viewLibrary": "View Library",
+    "features": {
+      "stories": {
+        "title": "Personalized Stories",
+        "description": "Create unique stories tailored to your child's interests"
+      },
+      "illustrations": {
+        "title": "Beautiful Illustrations",
+        "description": "AI-generated artwork that brings stories to life"
+      },
+      "export": {
+        "title": "Multiple Formats",
+        "description": "Export as PDF, EPUB, or comic book format"
+      }
+    },
+    "howItWorks": {
+      "title": "How It Works",
+      "step1": {
+        "title": "Choose Your Story",
+        "description": "Pick a topic, characters, and age range"
+      },
+      "step2": {
+        "title": "AI Generates",
+        "description": "Our AI creates a unique story with illustrations"
+      },
+      "step3": {
+        "title": "Read & Export",
+        "description": "Enjoy your story and export in multiple formats"
+      }
+    }
+  },
+  "library": {
+    "title": "Story Library",
+    "subtitle": "Browse and manage your generated stories",
+    "empty": {
+      "title": "No stories yet",
+      "description": "Create your first story to get started",
+      "cta": "Create Story"
+    },
+    "filters": {
+      "search": "Search stories...",
+      "format": "Format",
+      "status": "Status",
+      "sharing": "Sharing",
+      "allFormats": "All Formats",
+      "storybook": "Storybook",
+      "comic": "Comic",
+      "allStatuses": "All Statuses",
+      "pending": "Pending",
+      "generating": "Generating",
+      "complete": "Complete",
+      "error": "Error",
+      "allSharing": "All",
+      "shared": "Shared",
+      "notShared": "Not Shared",
+      "clearFilters": "Clear Filters"
+    },
+    "sort": {
+      "newest": "Newest First",
+      "oldest": "Oldest First",
+      "title": "Title A-Z"
+    },
+    "pagination": {
+      "previous": "Previous",
+      "next": "Next",
+      "page": "Page {{current}} of {{total}}",
+      "showing": "Showing {{start}}-{{end}} of {{total}} stories"
+    }
+  },
+  "browse": {
+    "title": "Browse Stories",
+    "subtitle": "Discover publicly shared stories from the community",
+    "empty": {
+      "title": "No public stories yet",
+      "description": "Be the first to share a story with the community"
+    }
+  },
+  "saved": {
+    "title": "Saved Stories",
+    "subtitle": "Your collection of saved stories",
+    "empty": {
+      "title": "No saved stories",
+      "description": "Save stories from the browse page to view them here"
+    }
+  },
+  "generate": {
+    "title": "Create a New Story",
+    "steps": {
+      "basics": "Basic Info",
+      "characters": "Characters",
+      "details": "Details",
+      "review": "Review"
+    },
+    "form": {
+      "title": "Story Title",
+      "titlePlaceholder": "Enter a title or leave blank for AI-generated",
+      "format": "Format",
+      "formatStorybook": "Storybook",
+      "formatStorybookDesc": "Traditional illustrated storybook with narrative text",
+      "formatComic": "Comic Book",
+      "formatComicDesc": "Panel-based comic with dialogue and action",
+      "age": "Target Age",
+      "ageDescription": "Select the target age range for your story",
+      "ageYears": "{{age}} years old",
+      "topic": "Story Topic",
+      "topicPlaceholder": "A brave squirrel exploring a magical forest...",
+      "topicDescription": "What should the story be about?",
+      "setting": "Setting",
+      "settingPlaceholder": "A magical forest with talking animals...",
+      "settingDescription": "Where does the story take place?",
+      "characters": "Characters",
+      "addCharacter": "Add Character",
+      "removeCharacter": "Remove",
+      "characterName": "Character Name",
+      "characterNamePlaceholder": "e.g., Luna the Brave",
+      "characterDescription": "Description",
+      "characterDescriptionPlaceholder": "A curious young rabbit with fluffy white fur...",
+      "mainCharacter": "Main Character",
+      "pageCount": "Number of Pages",
+      "pageCountDescription": "How long should the story be?",
+      "pages": "{{count}} pages",
+      "illustrationStyle": "Illustration Style",
+      "styleWatercolor": "Watercolor",
+      "styleDigital": "Digital Art",
+      "styleCartoon": "Cartoon",
+      "stylePencil": "Pencil Sketch",
+      "style3d": "3D Rendered",
+      "theme": "Theme (Optional)",
+      "themePlaceholder": "Friendship, courage, kindness...",
+      "themeDescription": "What lesson or theme should the story convey?",
+      "panelsPerPage": "Panels Per Page",
+      "panelsDescription": "Number of panels on each comic page"
+    },
+    "buttons": {
+      "next": "Next",
+      "previous": "Previous",
+      "generate": "Generate Story",
+      "generating": "Generating...",
+      "useTemplate": "Use Template"
+    },
+    "review": {
+      "title": "Review Your Story",
+      "format": "Format",
+      "targetAge": "Target Age",
+      "pageCount": "Page Count",
+      "topic": "Topic",
+      "setting": "Setting",
+      "characters": "Characters",
+      "theme": "Theme",
+      "illustrationStyle": "Illustration Style",
+      "notSpecified": "Not specified",
+      "edit": "Edit"
+    },
+    "templates": {
+      "title": "Story Templates",
+      "description": "Start with a pre-made template",
+      "useTemplate": "Use This Template",
+      "adventure": {
+        "title": "Forest Adventure",
+        "description": "An exciting journey through a magical forest"
+      },
+      "friendship": {
+        "title": "Best Friends",
+        "description": "A heartwarming story about friendship"
+      },
+      "space": {
+        "title": "Space Explorer",
+        "description": "An intergalactic adventure among the stars"
+      }
+    },
+    "validation": {
+      "topicRequired": "Please enter a story topic",
+      "topicTooShort": "Topic must be at least 10 characters",
+      "characterNameRequired": "Character name is required",
+      "atLeastOneCharacter": "Add at least one character"
+    }
+  },
+  "story": {
+    "format": "Format",
+    "pages": "{{count}} pages",
+    "page": "Page {{number}}",
+    "age": "Age {{age}}",
+    "generating": "Generating...",
+    "generatingProgress": "Generating... {{progress}}%",
+    "failed": "Generation Failed",
+    "complete": "Complete",
+    "pending": "Pending",
+    "created": "Created {{date}}",
+    "by": "by {{author}}",
+    "actions": {
+      "read": "Read Story",
+      "export": "Export",
+      "share": "Share",
+      "artifacts": "View Artifacts",
+      "delete": "Delete",
+      "retry": "Retry Generation",
+      "save": "Save",
+      "unsave": "Unsave"
+    },
+    "reader": {
+      "title": "Story Reader",
+      "previousPage": "Previous Page",
+      "nextPage": "Next Page",
+      "pageOf": "Page {{current}} of {{total}}",
+      "close": "Close Reader",
+      "fullscreen": "Fullscreen",
+      "exitFullscreen": "Exit Fullscreen"
+    },
+    "artifacts": {
+      "title": "Story Artifacts",
+      "characterSheets": "Character Reference Sheets",
+      "illustrations": "Page Illustrations",
+      "metadata": "Generation Metadata",
+      "download": "Download"
+    }
+  },
+  "export": {
+    "title": "Export Story",
+    "description": "Choose a format to download your story",
+    "formats": {
+      "pdf": "PDF Document",
+      "pdfDesc": "Best for printing and reading on any device",
+      "epub": "EPUB E-book",
+      "epubDesc": "For e-readers like Kindle, Kobo, or Apple Books",
+      "cbz": "CBZ Comic",
+      "cbzDesc": "Comic book format for comic reader apps",
+      "images": "Images (ZIP)",
+      "imagesDesc": "Download all illustrations as a ZIP archive"
+    },
+    "options": {
+      "includeText": "Include story text",
+      "highResolution": "High resolution images",
+      "includeCover": "Include cover page"
+    },
+    "buttons": {
+      "download": "Download",
+      "downloading": "Downloading...",
+      "cancel": "Cancel"
+    }
+  },
+  "share": {
+    "title": "Share Story",
+    "description": "Share this story with others",
+    "publicSharing": "Public Sharing",
+    "enableDescription": "Enable sharing to get a public link",
+    "disableDescription": "Anyone with the link can view this story",
+    "shareLink": "Share Link",
+    "copyLink": "Copy Link",
+    "copied": "Copied!",
+    "enable": "Enable Sharing",
+    "disable": "Disable Sharing",
+    "social": {
+      "shareOn": "Share on",
+      "twitter": "Twitter",
+      "facebook": "Facebook",
+      "email": "Email"
+    }
+  },
+  "delete": {
+    "title": "Delete Story",
+    "description": "Are you sure you want to delete \"{{title}}\"?",
+    "warning": "This action cannot be undone. All story data and images will be permanently removed.",
+    "confirm": "Delete",
+    "cancel": "Cancel",
+    "deleting": "Deleting..."
+  },
+  "settings": {
+    "title": "Settings",
+    "subtitle": "Configure your preferences",
+    "tabs": {
+      "apiKeys": "API Keys",
+      "defaults": "Defaults",
+      "content": "Content",
+      "safety": "Safety",
+      "limits": "Limits"
+    },
+    "apiKeys": {
+      "title": "LLM Provider API Keys",
+      "description": "Configure your AI provider credentials",
+      "provider": "Default Provider",
+      "selectProvider": "Select a provider",
+      "googleKey": "Google API Key",
+      "openaiKey": "OpenAI API Key",
+      "anthropicKey": "Anthropic API Key",
+      "keyPlaceholder": "Enter your API key",
+      "testConnection": "Test Connection",
+      "testing": "Testing...",
+      "connectionSuccess": "Connection successful",
+      "connectionFailed": "Connection failed",
+      "keyHidden": "Key hidden for security",
+      "showKey": "Show Key",
+      "hideKey": "Hide Key"
+    },
+    "defaults": {
+      "title": "Generation Defaults",
+      "description": "Default settings for new stories",
+      "format": "Default Format",
+      "style": "Default Style",
+      "pageCount": "Default Page Count",
+      "targetAge": "Default Target Age"
+    },
+    "content": {
+      "title": "Content Settings",
+      "description": "Control the type of content generated",
+      "themes": "Allowed Themes",
+      "vocabulary": "Vocabulary Level",
+      "complexity": "Story Complexity"
+    },
+    "safety": {
+      "title": "Safety Settings",
+      "description": "Content moderation and safety filters",
+      "nsfwFilter": "NSFW Filter",
+      "nsfwFilterDesc": "Block inappropriate content",
+      "violenceFilter": "Violence Filter",
+      "violenceFilterDesc": "Filter violent or scary content",
+      "ageVerification": "Age-Appropriate Content",
+      "ageVerificationDesc": "Ensure content matches target age"
+    },
+    "limits": {
+      "title": "Generation Limits",
+      "description": "Configure generation constraints",
+      "maxPages": "Maximum Pages",
+      "maxCharacters": "Maximum Characters",
+      "maxRetries": "Maximum Retries",
+      "concurrentGenerations": "Concurrent Generations"
+    },
+    "buttons": {
+      "save": "Save Changes",
+      "saving": "Saving...",
+      "reset": "Reset to Defaults",
+      "cancel": "Cancel"
+    },
+    "messages": {
+      "saved": "Settings saved successfully",
+      "error": "Failed to save settings",
+      "resetConfirm": "Are you sure you want to reset all settings to defaults?"
+    }
+  },
+  "auth": {
+    "signIn": "Sign In",
+    "signUp": "Sign Up",
+    "signOut": "Sign Out",
+    "email": "Email",
+    "emailPlaceholder": "you@example.com",
+    "password": "Password",
+    "passwordPlaceholder": "Enter your password",
+    "confirmPassword": "Confirm Password",
+    "confirmPasswordPlaceholder": "Confirm your password",
+    "name": "Name",
+    "namePlaceholder": "Your name",
+    "forgotPassword": "Forgot password?",
+    "noAccount": "Don't have an account?",
+    "hasAccount": "Already have an account?",
+    "orContinueWith": "Or continue with",
+    "google": "Google",
+    "github": "GitHub",
+    "signingIn": "Signing in...",
+    "signingUp": "Signing up...",
+    "errors": {
+      "invalidCredentials": "Invalid email or password",
+      "emailInUse": "Email already in use",
+      "weakPassword": "Password must be at least 8 characters",
+      "passwordMismatch": "Passwords do not match",
+      "invalidEmail": "Please enter a valid email"
+    },
+    "welcome": "Welcome back!",
+    "createAccount": "Create your account"
+  },
+  "common": {
+    "loading": "Loading...",
+    "error": "Error",
+    "success": "Success",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "close": "Close",
+    "back": "Back",
+    "next": "Next",
+    "submit": "Submit",
+    "retry": "Retry",
+    "confirm": "Confirm",
+    "yes": "Yes",
+    "no": "No",
+    "or": "or",
+    "and": "and",
+    "of": "of",
+    "all": "All",
+    "none": "None",
+    "search": "Search",
+    "filter": "Filter",
+    "sort": "Sort",
+    "view": "View",
+    "download": "Download",
+    "upload": "Upload",
+    "refresh": "Refresh",
+    "more": "More",
+    "less": "Less",
+    "showMore": "Show more",
+    "showLess": "Show less",
+    "seeAll": "See all",
+    "language": "Language"
+  },
+  "errors": {
+    "generic": "Something went wrong",
+    "notFound": "Not found",
+    "pageNotFound": "Page not found",
+    "storyNotFound": "Story not found",
+    "unauthorized": "Please sign in to continue",
+    "forbidden": "You don't have permission to do this",
+    "validation": "Please check your input",
+    "network": "Network error. Please check your connection.",
+    "server": "Server error. Please try again later.",
+    "timeout": "Request timed out. Please try again.",
+    "rateLimit": "Too many requests. Please wait a moment."
+  },
+  "time": {
+    "justNow": "Just now",
+    "minutesAgo": "{{count}} minute ago",
+    "minutesAgo_other": "{{count}} minutes ago",
+    "hoursAgo": "{{count}} hour ago",
+    "hoursAgo_other": "{{count}} hours ago",
+    "daysAgo": "{{count}} day ago",
+    "daysAgo_other": "{{count}} days ago",
+    "weeksAgo": "{{count}} week ago",
+    "weeksAgo_other": "{{count}} weeks ago"
+  },
+  "footer": {
+    "copyright": "StorAI Booker. All rights reserved.",
+    "privacy": "Privacy Policy",
+    "terms": "Terms of Service",
+    "contact": "Contact"
+  }
+}

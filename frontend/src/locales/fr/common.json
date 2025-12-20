@@ -1,0 +1,451 @@
+{
+  "nav": {
+    "home": "Accueil",
+    "browse": "Parcourir",
+    "generate": "Créer",
+    "library": "Bibliothèque",
+    "saved": "Enregistrés",
+    "settings": "Paramètres",
+    "signIn": "Se connecter",
+    "signUp": "S'inscrire",
+    "signOut": "Se déconnecter",
+    "profile": "Profil"
+  },
+  "home": {
+    "title": "Créez des Histoires Magiques",
+    "subtitle": "Génération de livres d'histoires et de bandes dessinées pour enfants par IA",
+    "cta": "Créez Votre Première Histoire",
+    "viewLibrary": "Voir la Bibliothèque",
+    "features": {
+      "stories": {
+        "title": "Histoires Personnalisées",
+        "description": "Créez des histoires uniques adaptées aux intérêts de votre enfant"
+      },
+      "illustrations": {
+        "title": "Belles Illustrations",
+        "description": "Art généré par IA qui donne vie aux histoires"
+      },
+      "export": {
+        "title": "Formats Multiples",
+        "description": "Exportez en PDF, EPUB ou format bande dessinée"
+      }
+    },
+    "howItWorks": {
+      "title": "Comment Ça Marche",
+      "step1": {
+        "title": "Choisissez Votre Histoire",
+        "description": "Sélectionnez un thème, des personnages et une tranche d'âge"
+      },
+      "step2": {
+        "title": "L'IA Génère",
+        "description": "Notre IA crée une histoire unique avec des illustrations"
+      },
+      "step3": {
+        "title": "Lisez et Exportez",
+        "description": "Profitez de votre histoire et exportez-la en plusieurs formats"
+      }
+    }
+  },
+  "library": {
+    "title": "Bibliothèque d'Histoires",
+    "subtitle": "Parcourez et gérez vos histoires générées",
+    "empty": {
+      "title": "Pas encore d'histoires",
+      "description": "Créez votre première histoire pour commencer",
+      "cta": "Créer une Histoire"
+    },
+    "filters": {
+      "search": "Rechercher des histoires...",
+      "format": "Format",
+      "status": "Statut",
+      "sharing": "Partage",
+      "allFormats": "Tous les Formats",
+      "storybook": "Livre d'histoires",
+      "comic": "Bande dessinée",
+      "allStatuses": "Tous les Statuts",
+      "pending": "En attente",
+      "generating": "En génération",
+      "complete": "Terminé",
+      "error": "Erreur",
+      "allSharing": "Tous",
+      "shared": "Partagé",
+      "notShared": "Non partagé",
+      "clearFilters": "Effacer les Filtres"
+    },
+    "sort": {
+      "newest": "Plus récents",
+      "oldest": "Plus anciens",
+      "title": "Titre A-Z"
+    },
+    "pagination": {
+      "previous": "Précédent",
+      "next": "Suivant",
+      "page": "Page {{current}} sur {{total}}",
+      "showing": "Affichage {{start}}-{{end}} sur {{total}} histoires"
+    }
+  },
+  "browse": {
+    "title": "Parcourir les Histoires",
+    "subtitle": "Découvrez les histoires partagées publiquement par la communauté",
+    "empty": {
+      "title": "Pas encore d'histoires publiques",
+      "description": "Soyez le premier à partager une histoire avec la communauté"
+    }
+  },
+  "saved": {
+    "title": "Histoires Enregistrées",
+    "subtitle": "Votre collection d'histoires enregistrées",
+    "empty": {
+      "title": "Pas d'histoires enregistrées",
+      "description": "Enregistrez des histoires depuis la page de navigation pour les voir ici"
+    }
+  },
+  "generate": {
+    "title": "Créer une Nouvelle Histoire",
+    "steps": {
+      "basics": "Info de Base",
+      "characters": "Personnages",
+      "details": "Détails",
+      "review": "Révision"
+    },
+    "form": {
+      "title": "Titre de l'Histoire",
+      "titlePlaceholder": "Entrez un titre ou laissez vide pour génération automatique",
+      "format": "Format",
+      "formatStorybook": "Livre d'histoires",
+      "formatStorybookDesc": "Livre d'histoires illustré traditionnel avec texte narratif",
+      "formatComic": "Bande Dessinée",
+      "formatComicDesc": "BD basée sur des panneaux avec dialogues et action",
+      "age": "Âge Cible",
+      "ageDescription": "Sélectionnez la tranche d'âge cible pour votre histoire",
+      "ageYears": "{{age}} ans",
+      "topic": "Sujet de l'Histoire",
+      "topicPlaceholder": "Un écureuil courageux explorant une forêt magique...",
+      "topicDescription": "De quoi devrait parler l'histoire ?",
+      "setting": "Cadre",
+      "settingPlaceholder": "Une forêt magique avec des animaux qui parlent...",
+      "settingDescription": "Où se déroule l'histoire ?",
+      "characters": "Personnages",
+      "addCharacter": "Ajouter un Personnage",
+      "removeCharacter": "Supprimer",
+      "characterName": "Nom du Personnage",
+      "characterNamePlaceholder": "ex., Luna la Courageuse",
+      "characterDescription": "Description",
+      "characterDescriptionPlaceholder": "Un jeune lapin curieux avec une fourrure blanche duveteuse...",
+      "mainCharacter": "Personnage Principal",
+      "pageCount": "Nombre de Pages",
+      "pageCountDescription": "Quelle devrait être la longueur de l'histoire ?",
+      "pages": "{{count}} pages",
+      "illustrationStyle": "Style d'Illustration",
+      "styleWatercolor": "Aquarelle",
+      "styleDigital": "Art Numérique",
+      "styleCartoon": "Dessin Animé",
+      "stylePencil": "Croquis au Crayon",
+      "style3d": "Rendu 3D",
+      "theme": "Thème (Optionnel)",
+      "themePlaceholder": "Amitié, courage, gentillesse...",
+      "themeDescription": "Quelle leçon ou thème l'histoire devrait-elle transmettre ?",
+      "panelsPerPage": "Panneaux par Page",
+      "panelsDescription": "Nombre de panneaux sur chaque page de BD"
+    },
+    "buttons": {
+      "next": "Suivant",
+      "previous": "Précédent",
+      "generate": "Générer l'Histoire",
+      "generating": "Génération...",
+      "useTemplate": "Utiliser le Modèle"
+    },
+    "review": {
+      "title": "Réviser Votre Histoire",
+      "format": "Format",
+      "targetAge": "Âge Cible",
+      "pageCount": "Nombre de Pages",
+      "topic": "Sujet",
+      "setting": "Cadre",
+      "characters": "Personnages",
+      "theme": "Thème",
+      "illustrationStyle": "Style d'Illustration",
+      "notSpecified": "Non spécifié",
+      "edit": "Modifier"
+    },
+    "templates": {
+      "title": "Modèles d'Histoires",
+      "description": "Commencez avec un modèle prédéfini",
+      "useTemplate": "Utiliser Ce Modèle",
+      "adventure": {
+        "title": "Aventure en Forêt",
+        "description": "Un voyage passionnant à travers une forêt magique"
+      },
+      "friendship": {
+        "title": "Meilleurs Amis",
+        "description": "Une histoire touchante sur l'amitié"
+      },
+      "space": {
+        "title": "Explorateur Spatial",
+        "description": "Une aventure intergalactique parmi les étoiles"
+      }
+    },
+    "validation": {
+      "topicRequired": "Veuillez entrer un sujet pour l'histoire",
+      "topicTooShort": "Le sujet doit avoir au moins 10 caractères",
+      "characterNameRequired": "Le nom du personnage est requis",
+      "atLeastOneCharacter": "Ajoutez au moins un personnage"
+    }
+  },
+  "story": {
+    "format": "Format",
+    "pages": "{{count}} pages",
+    "page": "Page {{number}}",
+    "age": "Âge {{age}}",
+    "generating": "Génération...",
+    "generatingProgress": "Génération... {{progress}}%",
+    "failed": "Échec de la Génération",
+    "complete": "Terminé",
+    "pending": "En attente",
+    "created": "Créé le {{date}}",
+    "by": "par {{author}}",
+    "actions": {
+      "read": "Lire l'Histoire",
+      "export": "Exporter",
+      "share": "Partager",
+      "artifacts": "Voir les Ressources",
+      "delete": "Supprimer",
+      "retry": "Réessayer la Génération",
+      "save": "Enregistrer",
+      "unsave": "Retirer des Enregistrés"
+    },
+    "reader": {
+      "title": "Lecteur d'Histoires",
+      "previousPage": "Page Précédente",
+      "nextPage": "Page Suivante",
+      "pageOf": "Page {{current}} sur {{total}}",
+      "close": "Fermer le Lecteur",
+      "fullscreen": "Plein Écran",
+      "exitFullscreen": "Quitter le Plein Écran"
+    },
+    "artifacts": {
+      "title": "Ressources de l'Histoire",
+      "characterSheets": "Fiches de Référence des Personnages",
+      "illustrations": "Illustrations des Pages",
+      "metadata": "Métadonnées de Génération",
+      "download": "Télécharger"
+    }
+  },
+  "export": {
+    "title": "Exporter l'Histoire",
+    "description": "Choisissez un format pour télécharger votre histoire",
+    "formats": {
+      "pdf": "Document PDF",
+      "pdfDesc": "Idéal pour imprimer et lire sur n'importe quel appareil",
+      "epub": "E-book EPUB",
+      "epubDesc": "Pour les liseuses comme Kindle, Kobo ou Apple Books",
+      "cbz": "BD CBZ",
+      "cbzDesc": "Format bande dessinée pour les applications de lecture de BD",
+      "images": "Images (ZIP)",
+      "imagesDesc": "Téléchargez toutes les illustrations en archive ZIP"
+    },
+    "options": {
+      "includeText": "Inclure le texte de l'histoire",
+      "highResolution": "Images haute résolution",
+      "includeCover": "Inclure la page de couverture"
+    },
+    "buttons": {
+      "download": "Télécharger",
+      "downloading": "Téléchargement...",
+      "cancel": "Annuler"
+    }
+  },
+  "share": {
+    "title": "Partager l'Histoire",
+    "description": "Partagez cette histoire avec d'autres",
+    "publicSharing": "Partage Public",
+    "enableDescription": "Activez le partage pour obtenir un lien public",
+    "disableDescription": "Toute personne avec le lien peut voir cette histoire",
+    "shareLink": "Lien de Partage",
+    "copyLink": "Copier le Lien",
+    "copied": "Copié !",
+    "enable": "Activer le Partage",
+    "disable": "Désactiver le Partage",
+    "social": {
+      "shareOn": "Partager sur",
+      "twitter": "Twitter",
+      "facebook": "Facebook",
+      "email": "E-mail"
+    }
+  },
+  "delete": {
+    "title": "Supprimer l'Histoire",
+    "description": "Êtes-vous sûr de vouloir supprimer \"{{title}}\" ?",
+    "warning": "Cette action ne peut pas être annulée. Toutes les données et images de l'histoire seront supprimées définitivement.",
+    "confirm": "Supprimer",
+    "cancel": "Annuler",
+    "deleting": "Suppression..."
+  },
+  "settings": {
+    "title": "Paramètres",
+    "subtitle": "Configurez vos préférences",
+    "tabs": {
+      "apiKeys": "Clés API",
+      "defaults": "Valeurs par Défaut",
+      "content": "Contenu",
+      "safety": "Sécurité",
+      "limits": "Limites"
+    },
+    "apiKeys": {
+      "title": "Clés API du Fournisseur LLM",
+      "description": "Configurez les identifiants de votre fournisseur d'IA",
+      "provider": "Fournisseur par Défaut",
+      "selectProvider": "Sélectionnez un fournisseur",
+      "googleKey": "Clé API Google",
+      "openaiKey": "Clé API OpenAI",
+      "anthropicKey": "Clé API Anthropic",
+      "keyPlaceholder": "Entrez votre clé API",
+      "testConnection": "Tester la Connexion",
+      "testing": "Test...",
+      "connectionSuccess": "Connexion réussie",
+      "connectionFailed": "Échec de la connexion",
+      "keyHidden": "Clé masquée pour la sécurité",
+      "showKey": "Afficher la Clé",
+      "hideKey": "Masquer la Clé"
+    },
+    "defaults": {
+      "title": "Valeurs par Défaut de Génération",
+      "description": "Paramètres par défaut pour les nouvelles histoires",
+      "format": "Format par Défaut",
+      "style": "Style par Défaut",
+      "pageCount": "Nombre de Pages par Défaut",
+      "targetAge": "Âge Cible par Défaut"
+    },
+    "content": {
+      "title": "Paramètres de Contenu",
+      "description": "Contrôlez le type de contenu généré",
+      "themes": "Thèmes Autorisés",
+      "vocabulary": "Niveau de Vocabulaire",
+      "complexity": "Complexité de l'Histoire"
+    },
+    "safety": {
+      "title": "Paramètres de Sécurité",
+      "description": "Modération de contenu et filtres de sécurité",
+      "nsfwFilter": "Filtre NSFW",
+      "nsfwFilterDesc": "Bloquer le contenu inapproprié",
+      "violenceFilter": "Filtre Violence",
+      "violenceFilterDesc": "Filtrer le contenu violent ou effrayant",
+      "ageVerification": "Contenu Approprié à l'Âge",
+      "ageVerificationDesc": "S'assurer que le contenu correspond à l'âge cible"
+    },
+    "limits": {
+      "title": "Limites de Génération",
+      "description": "Configurez les contraintes de génération",
+      "maxPages": "Maximum de Pages",
+      "maxCharacters": "Maximum de Personnages",
+      "maxRetries": "Maximum de Tentatives",
+      "concurrentGenerations": "Générations Simultanées"
+    },
+    "buttons": {
+      "save": "Enregistrer les Modifications",
+      "saving": "Enregistrement...",
+      "reset": "Réinitialiser aux Valeurs par Défaut",
+      "cancel": "Annuler"
+    },
+    "messages": {
+      "saved": "Paramètres enregistrés avec succès",
+      "error": "Échec de l'enregistrement des paramètres",
+      "resetConfirm": "Êtes-vous sûr de vouloir réinitialiser tous les paramètres aux valeurs par défaut ?"
+    }
+  },
+  "auth": {
+    "signIn": "Se Connecter",
+    "signUp": "S'inscrire",
+    "signOut": "Se Déconnecter",
+    "email": "E-mail",
+    "emailPlaceholder": "vous@exemple.com",
+    "password": "Mot de passe",
+    "passwordPlaceholder": "Entrez votre mot de passe",
+    "confirmPassword": "Confirmer le Mot de passe",
+    "confirmPasswordPlaceholder": "Confirmez votre mot de passe",
+    "name": "Nom",
+    "namePlaceholder": "Votre nom",
+    "forgotPassword": "Mot de passe oublié ?",
+    "noAccount": "Vous n'avez pas de compte ?",
+    "hasAccount": "Vous avez déjà un compte ?",
+    "orContinueWith": "Ou continuez avec",
+    "google": "Google",
+    "github": "GitHub",
+    "signingIn": "Connexion...",
+    "signingUp": "Inscription...",
+    "errors": {
+      "invalidCredentials": "E-mail ou mot de passe invalide",
+      "emailInUse": "E-mail déjà utilisé",
+      "weakPassword": "Le mot de passe doit avoir au moins 8 caractères",
+      "passwordMismatch": "Les mots de passe ne correspondent pas",
+      "invalidEmail": "Veuillez entrer un e-mail valide"
+    },
+    "welcome": "Bon retour !",
+    "createAccount": "Créez votre compte"
+  },
+  "common": {
+    "loading": "Chargement...",
+    "error": "Erreur",
+    "success": "Succès",
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "delete": "Supprimer",
+    "edit": "Modifier",
+    "close": "Fermer",
+    "back": "Retour",
+    "next": "Suivant",
+    "submit": "Soumettre",
+    "retry": "Réessayer",
+    "confirm": "Confirmer",
+    "yes": "Oui",
+    "no": "Non",
+    "or": "ou",
+    "and": "et",
+    "of": "de",
+    "all": "Tous",
+    "none": "Aucun",
+    "search": "Rechercher",
+    "filter": "Filtrer",
+    "sort": "Trier",
+    "view": "Voir",
+    "download": "Télécharger",
+    "upload": "Téléverser",
+    "refresh": "Actualiser",
+    "more": "Plus",
+    "less": "Moins",
+    "showMore": "Voir plus",
+    "showLess": "Voir moins",
+    "seeAll": "Voir tout",
+    "language": "Langue"
+  },
+  "errors": {
+    "generic": "Une erreur s'est produite",
+    "notFound": "Non trouvé",
+    "pageNotFound": "Page non trouvée",
+    "storyNotFound": "Histoire non trouvée",
+    "unauthorized": "Veuillez vous connecter pour continuer",
+    "forbidden": "Vous n'avez pas la permission de faire cela",
+    "validation": "Veuillez vérifier votre saisie",
+    "network": "Erreur réseau. Veuillez vérifier votre connexion.",
+    "server": "Erreur serveur. Veuillez réessayer plus tard.",
+    "timeout": "La requête a expiré. Veuillez réessayer.",
+    "rateLimit": "Trop de requêtes. Veuillez patienter un moment."
+  },
+  "time": {
+    "justNow": "À l'instant",
+    "minutesAgo": "Il y a {{count}} minute",
+    "minutesAgo_other": "Il y a {{count}} minutes",
+    "hoursAgo": "Il y a {{count}} heure",
+    "hoursAgo_other": "Il y a {{count}} heures",
+    "daysAgo": "Il y a {{count}} jour",
+    "daysAgo_other": "Il y a {{count}} jours",
+    "weeksAgo": "Il y a {{count}} semaine",
+    "weeksAgo_other": "Il y a {{count}} semaines"
+  },
+  "footer": {
+    "copyright": "StorAI Booker. Tous droits réservés.",
+    "privacy": "Politique de Confidentialité",
+    "terms": "Conditions d'Utilisation",
+    "contact": "Contact"
+  }
+}

@@ -3,6 +3,7 @@
  */
 
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Globe } from 'lucide-react';
 import { PublicStoryCard } from '@/components/story';
 import { Pagination, FullPageSpinner } from '@/components/shared';
@@ -18,6 +19,7 @@ import { Label } from '@/components/ui/label';
 import type { StoryFormat } from '@/types/api';
 
 export function BrowsePage() {
+  const { t } = useTranslation();
   // Filters state
   const [format, setFormat] = useState<StoryFormat | 'all'>('all');
 
@@ -41,7 +43,7 @@ export function BrowsePage() {
   const totalPages = data ? getTotalPages(data.total) : 0;
 
   if (isLoading && !data) {
-    return <FullPageSpinner text="Loading stories..." />;
+    return <FullPageSpinner text={t('common.loading')} />;
   }
 
   return (
@@ -50,35 +52,35 @@ export function BrowsePage() {
       <div>
         <div className="flex items-center gap-2">
           <Globe className="h-8 w-8 text-primary" />
-          <h1 className="text-3xl font-bold">Browse Stories</h1>
+          <h1 className="text-3xl font-bold">{t('browse.title')}</h1>
         </div>
         <p className="text-muted-foreground mt-1">
-          Discover stories shared by the community
+          {t('browse.subtitle')}
         </p>
       </div>
 
       {/* Filter */}
       <div className="flex items-center gap-4">
         <div className="w-48">
-          <Label htmlFor="format-filter">Format</Label>
+          <Label htmlFor="format-filter">{t('library.filters.format')}</Label>
           <Select
             value={format}
             onValueChange={(value) => setFormat(value as StoryFormat | 'all')}
           >
             <SelectTrigger id="format-filter">
-              <SelectValue placeholder="All formats" />
+              <SelectValue placeholder={t('library.filters.allFormats')} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Formats</SelectItem>
-              <SelectItem value="storybook">Storybook</SelectItem>
-              <SelectItem value="comic">Comic</SelectItem>
+              <SelectItem value="all">{t('library.filters.allFormats')}</SelectItem>
+              <SelectItem value="storybook">{t('library.filters.storybook')}</SelectItem>
+              <SelectItem value="comic">{t('library.filters.comic')}</SelectItem>
             </SelectContent>
           </Select>
         </div>
 
         {data && (
           <p className="text-sm text-muted-foreground self-end pb-2">
-            {data.total} {data.total === 1 ? 'story' : 'stories'} found
+            {t('library.pagination.showing', { start: 1, end: data.stories.length, total: data.total })}
           </p>
         )}
       </div>
@@ -93,9 +95,9 @@ export function BrowsePage() {
       ) : (
         <div className="text-center py-12">
           <Globe className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-          <h3 className="text-lg font-medium">No stories yet</h3>
+          <h3 className="text-lg font-medium">{t('browse.empty.title')}</h3>
           <p className="text-muted-foreground">
-            Be the first to share a story with the community!
+            {t('browse.empty.description')}
           </p>
         </div>
       )}

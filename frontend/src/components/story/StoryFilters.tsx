@@ -3,6 +3,7 @@
  */
 
 import { Search } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { Input } from '@/components/ui/input';
 import {
   Select,
@@ -37,19 +38,21 @@ export function StoryFilters({
   shared = 'all',
   onSharedChange,
 }: StoryFiltersProps) {
+  const { t } = useTranslation();
+
   return (
     <div className="space-y-4">
       {/* Search */}
       <div>
         <Label htmlFor="search" className="sr-only">
-          Search stories
+          {t('library.filters.search')}
         </Label>
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             id="search"
             type="text"
-            placeholder="Search stories..."
+            placeholder={t('library.filters.search')}
             value={search}
             onChange={(e) => onSearchChange(e.target.value)}
             className="pl-10"
@@ -61,38 +64,38 @@ export function StoryFilters({
       <div className="grid gap-4 sm:grid-cols-3">
         {/* Format Filter */}
         <div>
-          <Label htmlFor="format-filter">Format</Label>
+          <Label htmlFor="format-filter">{t('library.filters.format')}</Label>
           <Select
             value={format}
             onValueChange={(value) => onFormatChange(value as StoryFormat | 'all')}
           >
             <SelectTrigger id="format-filter">
-              <SelectValue placeholder="All formats" />
+              <SelectValue placeholder={t('library.filters.allFormats')} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Formats</SelectItem>
-              <SelectItem value="storybook">Storybook</SelectItem>
-              <SelectItem value="comic">Comic</SelectItem>
+              <SelectItem value="all">{t('library.filters.allFormats')}</SelectItem>
+              <SelectItem value="storybook">{t('library.filters.storybook')}</SelectItem>
+              <SelectItem value="comic">{t('library.filters.comic')}</SelectItem>
             </SelectContent>
           </Select>
         </div>
 
         {/* Status Filter */}
         <div>
-          <Label htmlFor="status-filter">Status</Label>
+          <Label htmlFor="status-filter">{t('library.filters.status')}</Label>
           <Select
             value={status}
             onValueChange={(value) => onStatusChange(value as StoryStatus | 'all')}
           >
             <SelectTrigger id="status-filter">
-              <SelectValue placeholder="All statuses" />
+              <SelectValue placeholder={t('library.filters.allStatuses')} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Statuses</SelectItem>
-              <SelectItem value="pending">Pending</SelectItem>
-              <SelectItem value="generating">Generating</SelectItem>
-              <SelectItem value="complete">Complete</SelectItem>
-              <SelectItem value="error">Error</SelectItem>
+              <SelectItem value="all">{t('library.filters.allStatuses')}</SelectItem>
+              <SelectItem value="pending">{t('library.filters.pending')}</SelectItem>
+              <SelectItem value="generating">{t('library.filters.generating')}</SelectItem>
+              <SelectItem value="complete">{t('library.filters.complete')}</SelectItem>
+              <SelectItem value="error">{t('library.filters.error')}</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -100,18 +103,18 @@ export function StoryFilters({
         {/* Sharing Filter */}
         {onSharedChange && (
           <div>
-            <Label htmlFor="shared-filter">Sharing</Label>
+            <Label htmlFor="shared-filter">{t('library.filters.sharing')}</Label>
             <Select
               value={shared}
               onValueChange={(value) => onSharedChange(value as SharedFilter)}
             >
               <SelectTrigger id="shared-filter">
-                <SelectValue placeholder="All stories" />
+                <SelectValue placeholder={t('library.filters.allSharing')} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Stories</SelectItem>
-                <SelectItem value="shared">Shared Only</SelectItem>
-                <SelectItem value="not_shared">Not Shared</SelectItem>
+                <SelectItem value="all">{t('library.filters.allSharing')}</SelectItem>
+                <SelectItem value="shared">{t('library.filters.shared')}</SelectItem>
+                <SelectItem value="not_shared">{t('library.filters.notShared')}</SelectItem>
               </SelectContent>
             </Select>
           </div>

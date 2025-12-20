@@ -2,6 +2,7 @@
  * Delete story confirmation dialog.
  */
 
+import { useTranslation } from 'react-i18next';
 import { ConfirmDialog } from '@/components/shared';
 
 interface DeleteStoryDialogProps {
@@ -17,20 +18,23 @@ export function DeleteStoryDialog({
   onConfirm,
   storyTitle,
 }: DeleteStoryDialogProps) {
+  const { t } = useTranslation();
+
   return (
     <ConfirmDialog
       open={open}
       onOpenChange={onOpenChange}
       onConfirm={onConfirm}
-      title="Delete Story"
+      title={t('delete.title')}
       description={
         <>
-          Are you sure you want to delete <strong>"{storyTitle}"</strong>?
-          This action cannot be undone.
+          {t('delete.description', { title: storyTitle })}
+          {' '}
+          {t('delete.warning')}
         </>
       }
-      confirmText="Delete"
-      cancelText="Cancel"
+      confirmText={t('delete.confirm')}
+      cancelText={t('delete.cancel')}
       variant="destructive"
     />
   );

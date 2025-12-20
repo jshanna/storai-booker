@@ -6,6 +6,7 @@ import { useState, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Link, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { ChevronLeft, ChevronRight, Loader2, AlertTriangle, Settings } from 'lucide-react';
 import { Form } from '@/components/ui/form';
 import { Button } from '@/components/ui/button';
@@ -21,13 +22,6 @@ import { StoryDetailsStep } from './StoryDetailsStep';
 import { CharactersStep } from './CharactersStep';
 import { StyleStep } from './StyleStep';
 
-const STEPS: Step[] = [
-  { id: 1, name: 'Basic Info', description: 'Age & topic' },
-  { id: 2, name: 'Details', description: 'Setting & format' },
-  { id: 3, name: 'Characters', description: 'Main characters' },
-  { id: 4, name: 'Style', description: 'Illustration style' },
-];
-
 interface GenerationFormProps {
   /** Initial values to pre-fill the form (e.g., from a template) */
   initialValues?: Partial<StoryGenerationFormData>;
@@ -36,11 +30,20 @@ interface GenerationFormProps {
 }
 
 export function GenerationForm({ initialValues, onBack }: GenerationFormProps) {
+  const { t } = useTranslation();
   const [currentStep, setCurrentStep] = useState(1);
   const navigate = useNavigate();
   const { mutate: createStory, isPending } = useCreateStory();
   const { data: settings, isLoading: settingsLoading } = useSettings();
   const { announce } = useAnnouncer();
+
+  // Define steps with translations
+  const STEPS: Step[] = useMemo(() => [
+    { id: 1, name: t('generate.steps.basics'), description: t('generate.form.age') },
+    { id: 2, name: t('generate.steps.details'), description: t('generate.form.setting') },
+    { id: 3, name: t('generate.steps.characters'), description: t('generate.form.characters') },
+    { id: 4, name: t('generate.steps.review'), description: t('generate.form.illustrationStyle') },
+  ], [t]);
 
   // Create schema based on settings age range
   const schema = useMemo(() => {
@@ -73,7 +76,7 @@ export function GenerationForm({ initialValues, onBack }: GenerationFormProps) {
 
   // Show loading while fetching settings
   if (settingsLoading) {
-    return <FullPageSpinner text="Loading settings..." />;
+    return <FullPageSpinner text={t('common.loading')} />;
   }
 
   // Check if API key is configured
@@ -172,9 +175,9 @@ export function GenerationForm({ initialValues, onBack }: GenerationFormProps) {
   return (
     <Card className="max-w-4xl mx-auto">
       <CardHeader>
-        <CardTitle>Create a New Story</CardTitle>
+        <CardTitle>{t('generate.title')}</CardTitle>
         <CardDescription>
-          Follow the steps to generate a custom children's storybook or comic
+          {t('home.subtitle')}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-8">
@@ -182,13 +185,13 @@ export function GenerationForm({ initialValues, onBack }: GenerationFormProps) {
         {!hasApiKey && (
           <Alert variant="destructive">
             <AlertTriangle className="h-4 w-4" />
-            <AlertTitle>API Key Required</AlertTitle>
+            <AlertTitle>{t('settings.apiKeys.title')}</AlertTitle>
             <AlertDescription className="flex items-center justify-between">
-              <span>Please configure your LLM provider API key before generating stories.</span>
+              <span>{t('settings.apiKeys.description')}</span>
               <Button variant="outline" size="sm" asChild className="ml-4">
                 <Link to="/settings">
                   <Settings className="mr-2 h-4 w-4" />
-                  Go to Settings
+                  {t('nav.settings')}
                 </Link>
               </Button>
             </AlertDescription>
@@ -224,7 +227,7 @@ export function GenerationForm({ initialValues, onBack }: GenerationFormProps) {
                     disabled={isPending}
                   >
                     <ChevronLeft className="mr-2 h-4 w-4" />
-                    Templates
+                    {t('generate.templates.title')}
                   </Button>
                 )}
                 <Button
@@ -234,13 +237,13 @@ export function GenerationForm({ initialValues, onBack }: GenerationFormProps) {
                   disabled={currentStep === 1 || isPending}
                 >
                   <ChevronLeft className="mr-2 h-4 w-4" />
-                  Previous
+                  {t('generate.buttons.previous')}
                 </Button>
               </div>
 
               {currentStep < STEPS.length ? (
                 <Button type="button" onClick={handleNext} disabled={isPending}>
-                  Next
+                  {t('generate.buttons.next')}
                   <ChevronRight className="ml-2 h-4 w-4" />
                 </Button>
               ) : (
@@ -248,10 +251,10 @@ export function GenerationForm({ initialValues, onBack }: GenerationFormProps) {
                   {isPending ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Creating...
+                      {t('generate.buttons.generating')}
                     </>
                   ) : (
-                    'Create Story'
+                    t('generate.buttons.generate')
                   )}
                 </Button>
               )}

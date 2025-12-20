@@ -3,6 +3,7 @@
  */
 
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { StoryFilters, StoryGrid, DeleteStoryDialog } from '@/components/story';
 import { Pagination } from '@/components/shared';
 import { useStories, useDeleteStory, usePagination, useDebounce } from '@/lib/hooks';
@@ -11,6 +12,8 @@ import type { StoryFormat, StoryStatus } from '@/types/api';
 type SharedFilter = 'all' | 'shared' | 'not_shared';
 
 export function LibraryPage() {
+  const { t } = useTranslation();
+
   // Filters state
   const [search, setSearch] = useState('');
   const [format, setFormat] = useState<StoryFormat | 'all'>('all');
@@ -86,9 +89,9 @@ export function LibraryPage() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold">Story Library</h1>
+        <h1 className="text-3xl font-bold">{t('library.title')}</h1>
         <p className="text-muted-foreground">
-          Browse and manage your generated stories
+          {t('library.subtitle')}
         </p>
       </div>
 

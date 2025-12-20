@@ -5,6 +5,8 @@
 
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import i18n from '@/lib/i18n';
+import type { SupportedLanguage } from '@/lib/i18n';
 
 interface UIState {
   // Dark mode
@@ -20,6 +22,10 @@ interface UIState {
   sidebarOpen: boolean;
   toggleSidebar: () => void;
   setSidebarOpen: (value: boolean) => void;
+
+  // Language/locale preference
+  locale: SupportedLanguage;
+  setLocale: (locale: SupportedLanguage) => void;
 }
 
 /**
@@ -60,6 +66,13 @@ export const useUIStore = create<UIState>()(
       sidebarOpen: true,
       toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
       setSidebarOpen: (value) => set({ sidebarOpen: value }),
+
+      // Language/locale state and actions
+      locale: (i18n.language?.substring(0, 2) as SupportedLanguage) || 'en',
+      setLocale: (locale) => {
+        i18n.changeLanguage(locale);
+        set({ locale });
+      },
     }),
     {
       name: 'storai-ui-storage',
@@ -68,13 +81,18 @@ export const useUIStore = create<UIState>()(
         darkMode: state.darkMode,
         libraryView: state.libraryView,
         sidebarOpen: state.sidebarOpen,
+        locale: state.locale,
       }),
-      // Initialize dark mode on load
+      // Initialize dark mode and locale on load
       onRehydrateStorage: () => (state) => {
         if (state?.darkMode) {
           document.documentElement.classList.add('dark');
         } else {
           document.documentElement.classList.remove('dark');
+        }
+        // Sync i18n with persisted locale
+        if (state?.locale) {
+          i18n.changeLanguage(state.locale);
         }
       },
     }

@@ -3,12 +3,14 @@
  */
 
 import { useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Bookmark } from 'lucide-react';
 import { PublicStoryCard } from '@/components/story';
 import { Pagination, FullPageSpinner } from '@/components/shared';
 import { useBookmarks, usePagination } from '@/lib/hooks';
 
 export function SavedStoriesPage() {
+  const { t } = useTranslation();
   // Pagination
   const { page, setPage, getTotalPages } = usePagination({
     initialLimit: 12,
@@ -30,7 +32,7 @@ export function SavedStoriesPage() {
   const totalPages = data ? getTotalPages(data.total) : 0;
 
   if (isLoading && !data) {
-    return <FullPageSpinner text="Loading saved stories..." />;
+    return <FullPageSpinner text={t('common.loading')} />;
   }
 
   return (
@@ -39,17 +41,17 @@ export function SavedStoriesPage() {
       <div>
         <div className="flex items-center gap-2">
           <Bookmark className="h-8 w-8 text-primary" />
-          <h1 className="text-3xl font-bold">Saved Stories</h1>
+          <h1 className="text-3xl font-bold">{t('saved.title')}</h1>
         </div>
         <p className="text-muted-foreground mt-1">
-          Stories you've saved for later
+          {t('saved.subtitle')}
         </p>
       </div>
 
       {/* Info */}
       {data && data.total > 0 && (
         <p className="text-sm text-muted-foreground">
-          {data.total} saved {data.total === 1 ? 'story' : 'stories'}
+          {t('library.pagination.showing', { start: 1, end: data.bookmarks.length, total: data.total })}
         </p>
       )}
 
@@ -67,9 +69,9 @@ export function SavedStoriesPage() {
       ) : (
         <div className="text-center py-12">
           <Bookmark className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-          <h3 className="text-lg font-medium">No saved stories</h3>
+          <h3 className="text-lg font-medium">{t('saved.empty.title')}</h3>
           <p className="text-muted-foreground">
-            Browse public stories and click the bookmark icon to save them here.
+            {t('saved.empty.description')}
           </p>
         </div>
       )}

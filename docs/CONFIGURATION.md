@@ -27,9 +27,12 @@ Created from `.env.production.example`:
 cp .env.production.example .env.production
 ```
 
-### Frontend: `frontend/.env` (Optional)
+### Frontend: `frontend/.env.local`
 
-Vite automatically proxies `/api/*` to backend, so this is usually not needed.
+Created from `frontend/.env.example`:
+```bash
+cp frontend/.env.example frontend/.env.local
+```
 
 ---
 
@@ -267,6 +270,74 @@ NSFW_FILTER_ENABLED=true
 
 ---
 
+### JWT Authentication Settings
+
+| Variable | Type | Default | Description |
+|----------|------|---------|-------------|
+| `JWT_SECRET_KEY` | string | auto-generated | Secret key for JWT signing |
+| `JWT_ACCESS_TOKEN_EXPIRE_MINUTES` | integer | 60 | Access token expiration in minutes |
+
+**Example:**
+```bash
+JWT_SECRET_KEY=your-jwt-secret-key-here-change-in-production
+JWT_ACCESS_TOKEN_EXPIRE_MINUTES=60
+```
+
+**JWT Key Generation:**
+```bash
+# Generate a secure JWT secret key
+openssl rand -hex 32
+```
+
+**Security Notes:**
+- JWT keys are auto-generated on first run if not set
+- Always set explicit keys in production
+- Rotate keys periodically for security
+
+---
+
+### OAuth Provider Settings
+
+| Variable | Type | Default | Description |
+|----------|------|---------|-------------|
+| `GOOGLE_CLIENT_ID` | string | "" | Google OAuth client ID |
+| `GOOGLE_CLIENT_SECRET` | string | "" | Google OAuth client secret |
+| `GITHUB_CLIENT_ID` | string | "" | GitHub OAuth client ID |
+| `GITHUB_CLIENT_SECRET` | string | "" | GitHub OAuth client secret |
+| `OAUTH_REDIRECT_BASE_URL` | string | "http://localhost:5173" | Base URL for OAuth redirects |
+
+**Example:**
+```bash
+# Google OAuth
+GOOGLE_CLIENT_ID=123456789-abc.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=GOCSPX-your-client-secret
+
+# GitHub OAuth
+GITHUB_CLIENT_ID=your-github-client-id
+GITHUB_CLIENT_SECRET=your-github-client-secret
+
+# OAuth redirect URL (frontend)
+OAUTH_REDIRECT_BASE_URL=https://storai.example.com
+```
+
+**Setting Up OAuth:**
+
+**Google:**
+1. Go to [Google Cloud Console](https://console.cloud.google.com/)
+2. Create a new project or select existing
+3. Navigate to APIs & Services > Credentials
+4. Create OAuth 2.0 Client ID (Web application)
+5. Add authorized redirect URI: `{BACKEND_URL}/api/auth/google/callback`
+6. Copy Client ID and Client Secret
+
+**GitHub:**
+1. Go to [GitHub Developer Settings](https://github.com/settings/developers)
+2. Create a new OAuth App
+3. Set Authorization callback URL: `{BACKEND_URL}/api/auth/github/callback`
+4. Copy Client ID and generate Client Secret
+
+---
+
 ### CORS Settings
 
 | Variable | Type | Default | Description |
@@ -331,21 +402,73 @@ LOG_FORMAT=json
 
 ---
 
+### Sentry Error Tracking Settings
+
+| Variable | Type | Default | Description |
+|----------|------|---------|-------------|
+| `SENTRY_DSN` | string | "" | Sentry Data Source Name (leave empty to disable) |
+| `SENTRY_ENVIRONMENT` | string | "development" | Environment name in Sentry |
+| `SENTRY_TRACES_SAMPLE_RATE` | float | 0.1 | Performance monitoring sample rate (0.0 to 1.0) |
+| `SENTRY_PROFILES_SAMPLE_RATE` | float | 0.1 | Profiling sample rate (0.0 to 1.0) |
+
+**Example:**
+```bash
+# Production with Sentry
+SENTRY_DSN=https://abc123@o123456.ingest.sentry.io/1234567
+SENTRY_ENVIRONMENT=production
+SENTRY_TRACES_SAMPLE_RATE=0.1
+SENTRY_PROFILES_SAMPLE_RATE=0.1
+
+# Development (disable Sentry)
+SENTRY_DSN=
+```
+
+**Setting Up Sentry:**
+
+1. Create a free account at [sentry.io](https://sentry.io)
+2. Create a new project (Python/FastAPI for backend, React for frontend)
+3. Copy the DSN from Project Settings > Client Keys
+4. Add DSN to your environment variables
+
+**Sample Rate Guidelines:**
+- `0.0`: Disabled (no performance data sent)
+- `0.1`: 10% sampling (recommended for production)
+- `1.0`: 100% sampling (recommended for development/staging)
+
+**Features Enabled:**
+- Error tracking with stack traces
+- Performance monitoring (request timing)
+- Session replay (frontend only)
+- Release tracking
+- User context (when logged in)
+
+**Sensitive Data:**
+- Sensitive headers (Authorization, Cookie) are automatically filtered
+- API keys are never sent to Sentry
+- User emails are included for debugging (can be disabled)
+
+---
+
 ## Frontend Configuration
 
-### `frontend/.env` (Optional)
+### `frontend/.env.local`
 
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
 | `VITE_API_URL` | string | "" | Backend API URL (usually not needed) |
+| `VITE_SENTRY_DSN` | string | "" | Sentry DSN for frontend error tracking |
+| `VITE_SENTRY_ENVIRONMENT` | string | "development" | Environment name in Sentry |
+| `VITE_APP_VERSION` | string | "0.1.0" | Application version for releases |
 
 **Example:**
 ```bash
-# Usually not needed (Vite proxy configured)
-# VITE_API_URL=http://localhost:8000
+# Sentry error tracking (optional)
+VITE_SENTRY_DSN=https://abc123@o123456.ingest.sentry.io/7654321
+VITE_SENTRY_ENVIRONMENT=production
+VITE_APP_VERSION=0.1.0
 
-# Custom backend URL
-VITE_API_URL=https://api.storai.example.com
+# Custom backend URL (usually not needed)
+# VITE_API_URL=https://api.storai.example.com
 ```
 
 **Vite Proxy (Default):**
@@ -379,6 +502,19 @@ DEFAULT_IMAGE_MODEL=gemini-2.5-flash-image
 
 # Storage
 S3_BUCKET_NAME=storai-booker-images
+
+# Authentication
+JWT_SECRET_KEY=your-production-jwt-secret
+
+# OAuth (optional)
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+GITHUB_CLIENT_ID=
+GITHUB_CLIENT_SECRET=
+
+# Sentry (optional)
+SENTRY_DSN=
+SENTRY_ENVIRONMENT=production
 ```
 
 **Security Warning:**
@@ -435,6 +571,16 @@ DEFAULT_RETRY_LIMIT=3
 DEFAULT_MAX_CONCURRENT_PAGES=5
 NSFW_FILTER_ENABLED=true
 
+# Authentication (auto-generated if not set)
+JWT_SECRET_KEY=dev-jwt-secret-key
+JWT_ACCESS_TOKEN_EXPIRE_MINUTES=60
+
+# OAuth (optional for development)
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+GITHUB_CLIENT_ID=
+GITHUB_CLIENT_SECRET=
+
 # CORS (Frontend URLs)
 CORS_ORIGINS=["http://localhost:5173", "http://localhost:3000"]
 CORS_CREDENTIALS=true
@@ -445,6 +591,18 @@ RATE_LIMIT_PER_MINUTE=200
 # Logging (development: human-readable)
 LOG_LEVEL=INFO
 LOG_FORMAT=text
+
+# Sentry (optional - leave empty to disable)
+SENTRY_DSN=
+SENTRY_ENVIRONMENT=development
+```
+
+**`frontend/.env.local`:**
+```bash
+# Sentry (optional)
+VITE_SENTRY_DSN=
+VITE_SENTRY_ENVIRONMENT=development
+VITE_APP_VERSION=0.1.0
 ```
 
 ---
@@ -469,6 +627,20 @@ DEFAULT_IMAGE_MODEL=gemini-2.5-flash-image
 
 # Storage
 S3_BUCKET_NAME=storai-production-images
+
+# Authentication
+JWT_SECRET_KEY=production-jwt-secret-generate-with-openssl
+
+# OAuth
+GOOGLE_CLIENT_ID=123456789-abc.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=GOCSPX-your-secret
+GITHUB_CLIENT_ID=your-github-client-id
+GITHUB_CLIENT_SECRET=your-github-client-secret
+
+# Sentry
+SENTRY_DSN=https://abc123@o123456.ingest.sentry.io/1234567
+SENTRY_ENVIRONMENT=production
+SENTRY_TRACES_SAMPLE_RATE=0.1
 ```
 
 **Backend runs with these variables (set by compose):**
@@ -507,6 +679,14 @@ S3_REGION=us-east-1
 # LLM
 GOOGLE_API_KEY=AIzaSy...
 
+# Authentication
+JWT_SECRET_KEY=production-jwt-secret-here
+
+# OAuth
+GOOGLE_CLIENT_ID=your-google-client-id
+GOOGLE_CLIENT_SECRET=your-google-client-secret
+OAUTH_REDIRECT_BASE_URL=https://storai.example.com
+
 # CORS (production domain)
 CORS_ORIGINS=["https://storai.example.com"]
 
@@ -514,6 +694,11 @@ CORS_ORIGINS=["https://storai.example.com"]
 LOG_LEVEL=INFO
 LOG_FORMAT=json
 RATE_LIMIT_PER_MINUTE=60
+
+# Sentry
+SENTRY_DSN=https://abc123@o123456.ingest.sentry.io/1234567
+SENTRY_ENVIRONMENT=production
+SENTRY_TRACES_SAMPLE_RATE=0.1
 ```
 
 ---
@@ -536,7 +721,19 @@ SECRET_KEY=dev-secret-key-change-in-production
 SECRET_KEY=YOUR_SECRET_KEY_HERE
 ```
 
-### 2. API Keys
+### 2. JWT Keys
+
+**Generate Secure JWT Key:**
+```bash
+openssl rand -hex 32
+```
+
+**Best Practices:**
+- Use different keys for development and production
+- Rotate keys periodically (quarterly)
+- Store securely in secrets manager
+
+### 3. API Keys
 
 **Protection:**
 - Store in `.env` files only
@@ -554,7 +751,15 @@ GOOGLE_API_KEY=dev-key-with-quotas
 GOOGLE_API_KEY=prod-key-with-higher-limits
 ```
 
-### 3. Database Credentials
+### 4. OAuth Credentials
+
+**Security:**
+- Use separate OAuth apps for dev/staging/production
+- Restrict redirect URIs to specific domains
+- Keep client secrets confidential
+- Rotate secrets if compromised
+
+### 5. Database Credentials
 
 **MongoDB:**
 ```bash
@@ -574,7 +779,7 @@ REDIS_URL=redis://localhost:6379/0
 REDIS_URL=redis://:strong-redis-password@host:6379/0
 ```
 
-### 4. Storage Credentials
+### 6. Storage Credentials
 
 **MinIO/S3:**
 ```bash
@@ -587,7 +792,7 @@ S3_ACCESS_KEY_ID=admin-$(openssl rand -hex 8)
 S3_SECRET_ACCESS_KEY=$(openssl rand -base64 32)
 ```
 
-### 5. CORS Configuration
+### 7. CORS Configuration
 
 **Development:**
 ```bash
@@ -600,7 +805,7 @@ CORS_ORIGINS=["https://storai.example.com"]
 # Never use "*" in production!
 ```
 
-### 6. Rate Limiting
+### 8. Rate Limiting
 
 **Adjust Based on Traffic:**
 ```bash
@@ -614,7 +819,7 @@ RATE_LIMIT_PER_MINUTE=60
 RATE_LIMIT_PER_MINUTE=100
 ```
 
-### 7. Environment File Permissions
+### 9. Environment File Permissions
 
 ```bash
 # Restrict access to .env files
@@ -625,7 +830,7 @@ chmod 600 .env.production
 ls -la backend/.env  # Should show: -rw-------
 ```
 
-### 8. Git Ignore
+### 10. Git Ignore
 
 Ensure `.gitignore` includes:
 ```
@@ -689,6 +894,29 @@ open http://localhost:9001
 # Login with MINIO_ROOT_USER/PASSWORD
 ```
 
+### "OAuth callback failed" errors
+
+**Check:**
+- Redirect URI matches exactly (including trailing slashes)
+- Client ID and Secret are correct
+- OAuth app is not in "Testing" mode (Google)
+- Authorized domains are configured
+
+### "JWT token invalid" errors
+
+**Check:**
+- JWT_SECRET_KEY is the same across all instances
+- Token hasn't expired
+- Clock sync between servers
+
+### "Sentry not receiving events" errors
+
+**Check:**
+- SENTRY_DSN is correctly formatted
+- DSN includes the full URL with project ID
+- Network connectivity to Sentry servers
+- Sample rate is not set to 0
+
 ### Configuration not loading
 
 **Restart services after .env changes:**
@@ -705,5 +933,5 @@ docker compose restart backend celery-worker
 
 ---
 
-**Last Updated**: 2025-12-17
-**Version**: Phase 5
+**Last Updated**: 2025-12-20
+**Version**: Phase 6

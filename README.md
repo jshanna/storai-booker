@@ -1,44 +1,54 @@
-# 📚 StorAI-Booker
+# StorAI-Booker
 
-AI-powered storybook generation application using Google Gemini for creating personalized, illustrated children's stories.
+AI-powered storybook and comic book generation application using Google Gemini for creating personalized, illustrated children's stories.
 
-![Project Status](https://img.shields.io/badge/Status-Phase%205%20Complete-success)
+![Project Status](https://img.shields.io/badge/Status-Phase%206%20In%20Progress-blue)
 ![License](https://img.shields.io/badge/License-Proprietary-blue)
-![CI](https://github.com/yourusername/storai-booker/workflows/CI/badge.svg)
-![Backend Tests](https://github.com/yourusername/storai-booker/workflows/Backend%20Tests/badge.svg)
 
-## 🎯 Project Status: Phase 5 Complete! 🎉
+## Project Status
 
-**Current Phase:** Phase 5 - Production Readiness ✅ COMPLETE
-**Next Phase:** Phase 6 - Advanced Features
+**Current Phase:** Phase 6 - Advanced Features (In Progress)
 
-### What's Working Now
+### What's Working
 
-✅ **Full-Stack Application Ready**
+**Full-Stack Application**
 - Complete React/TypeScript frontend with modern UI
 - Full backend API with Google Gemini integration
-- End-to-end story generation pipeline
-- Character reference sheet generation for consistency
+- End-to-end story and comic book generation pipeline
+- User authentication (email/password + Google/GitHub OAuth)
 - Real-time generation progress tracking
-- Mobile-responsive reader interface
 
-✅ **Story Generation Features**
+**Story Generation**
 - AI-powered story planning and writing
+- Traditional storybooks and comic books
 - Character description expansion and consistency
-- Age-appropriate content validation
-- Automatic illustration generation
+- Age-appropriate content validation (ages 3-12)
+- Automatic illustration generation with character reference sheets
 - Custom cover images with titles
-- Graceful error handling and retry logic
 
-✅ **User Interface**
-- Multi-step generation form with validation
-- Library with search, filter, and sort
-- Full-screen story reader with page navigation
-- Settings management for LLM providers
-- Generation artifacts viewer (character sheets + prompts)
-- Dark mode support
+**User Features**
+- User accounts with profile management
+- Personal story library with search, filter, and sort
+- Story sharing with public links
+- Comments on shared stories
+- Bookmark/save other users' stories
+- Browse public stories from the community
 
-## 🚀 Quick Start
+**Export Options**
+- PDF document export
+- EPUB e-book format
+- CBZ comic book format
+- ZIP archive of images
+
+**Production Features**
+- Sentry error tracking integration
+- Response caching with Redis
+- Rate limiting and security headers
+- Structured JSON logging with correlation IDs
+- CI/CD with GitHub Actions
+- Docker Compose deployment
+
+## Quick Start
 
 ### Prerequisites
 
@@ -79,12 +89,15 @@ open http://localhost:5173
 
 ### Access Points
 
-- **Frontend**: http://localhost:5173
-- **Backend API**: http://localhost:8000
-- **API Docs**: http://localhost:8000/api/docs
-- **MinIO Console**: http://localhost:9001 (minioadmin/minioadmin)
+| Service | URL |
+|---------|-----|
+| Frontend | http://localhost:5173 |
+| Backend API | http://localhost:8000 |
+| API Docs (Swagger) | http://localhost:8000/api/docs |
+| API Docs (ReDoc) | http://localhost:8000/api/redoc |
+| MinIO Console | http://localhost:9001 |
 
-## 🏗️ Architecture
+## Architecture
 
 ### Tech Stack
 
@@ -96,6 +109,7 @@ open http://localhost:5173
 - Zustand (client state)
 - React Hook Form + Zod validation
 - Tailwind CSS
+- Sentry (error tracking)
 
 **Backend:**
 - Python 3.10+ with FastAPI
@@ -105,50 +119,16 @@ open http://localhost:5173
 - Google Gemini (text & image generation)
 - Pillow (image processing)
 - MinIO (S3-compatible storage)
+- Sentry (error tracking)
 
 **Infrastructure:**
 - Docker + Docker Compose
 - MongoDB 7.0
 - Redis 7
 - MinIO (local S3)
+- GitHub Actions (CI/CD)
 
-### Multi-Agent Story Generation
-
-```
-User Input → FastAPI → Celery Queue
-                           ↓
-        ┌──────────────────────────────────┐
-        │  Story Generation Pipeline       │
-        │                                  │
-        │  1. Coordinator Agent            │
-        │     • Expand character details   │
-        │     • Create story outline       │
-        │     • Plan page breakdowns       │
-        │                                  │
-        │  2. Character Sheet Generation   │
-        │     • Generate reference images  │
-        │     • Upload to storage          │
-        │                                  │
-        │  3. Page Generator (sequential)  │
-        │     • Generate page text         │
-        │     • Create illustration prompt │
-        │     • Generate & upload image    │
-        │                                  │
-        │  4. Validator Agent              │
-        │     • Check consistency          │
-        │     • Validate age-appropriateness│
-        │     • Regenerate if needed       │
-        │                                  │
-        │  5. Cover Generator              │
-        │     • Generate cover illustration│
-        │     • Upload final image         │
-        └──────────────────────────────────┘
-                    ↓
-        MongoDB (text & metadata)
-        MinIO (images & cover)
-```
-
-## 📁 Project Structure
+### Project Structure
 
 ```
 storai-booker/
@@ -160,25 +140,18 @@ storai-booker/
 │   │   ├── schemas/        # Pydantic request/response schemas
 │   │   ├── services/
 │   │   │   ├── agents/     # LLM agents (coordinator, page, validator)
-│   │   │   ├── image/      # Image generation & composition
+│   │   │   ├── image/      # Image generation
 │   │   │   ├── llm/        # LLM provider integration
-│   │   │   ├── celery_app.py
-│   │   │   └── storage.py  # MinIO/S3 storage service
+│   │   │   ├── export/     # PDF, EPUB, CBZ exporters
+│   │   │   └── ...
 │   │   ├── tasks/          # Celery background tasks
-│   │   └── middleware/     # Error handlers
+│   │   └── middleware/     # Security, logging, errors
 │   ├── tests/              # Pytest test suite
-│   ├── main.py             # FastAPI entry point
-│   └── pyproject.toml      # Python dependencies
+│   └── main.py             # FastAPI entry point
 │
 ├── frontend/                # React TypeScript frontend
 │   ├── src/
-│   │   ├── components/
-│   │   │   ├── generation/ # Multi-step form
-│   │   │   ├── story/      # Library & story cards
-│   │   │   ├── reader/     # Book reader & navigation
-│   │   │   ├── settings/   # Settings management
-│   │   │   ├── shared/     # Reusable components
-│   │   │   └── ui/         # shadcn/ui components
+│   │   ├── components/     # UI components
 │   │   ├── pages/          # Page components
 │   │   ├── lib/
 │   │   │   ├── api/        # API client
@@ -187,71 +160,105 @@ storai-booker/
 │   │   └── types/          # TypeScript types
 │   └── package.json
 │
+├── docs/                    # Documentation
 ├── specs/                   # Project specifications
-├── docs/                    # Additional documentation
-├── docker-compose.yml       # Infrastructure services
-├── CLAUDE.md               # Guide for Claude Code
-└── README.md               # This file
+└── docker-compose.yml       # Infrastructure services
 ```
 
-## 🎨 Features
+## Features
 
 ### Story Generation
 - **Personalized Stories**: Age-appropriate content (3-12 years)
+- **Two Formats**: Traditional storybooks and comic books
 - **Character Consistency**: Reference sheets for visual consistency
-- **Multiple Styles**: Watercolor, digital art, cartoon, and more
+- **Multiple Styles**: Watercolor, digital art, cartoon, anime, and more
 - **Flexible Length**: 5-20 pages per story
 - **Smart Validation**: Automatic quality and coherence checking
-- **Error Recovery**: Retry logic with safety filter handling
 
-### User Interface
-- **Guided Form**: Step-by-step story creation
-- **Real-time Progress**: Live updates during generation
-- **Library Management**: Search, filter, sort your stories
-- **Reader Mode**: Full-screen reading experience with page navigation
-- **Mobile Responsive**: Works on phones and tablets
-- **Generation Artifacts**: View character sheets and prompts
+### User Accounts
+- Email/password registration and login
+- OAuth with Google and GitHub
+- Profile management with avatar
+- Secure password change
 
-### Settings & Configuration
-- **LLM Provider**: Configure Google Gemini API
-- **Content Filters**: Age range and safety settings
-- **Generation Limits**: Retry and concurrency controls
-- **Defaults**: Set preferred formats and styles
+### Library & Discovery
+- Personal library with all your stories
+- Search by title
+- Filter by format (storybook/comic), status, sharing
+- Browse public stories from other users
+- Save/bookmark stories for later
 
-### Production Features (Phase 5)
-- **Performance**: Response caching with Redis, optimized image handling
-- **Security**: Rate limiting (100 req/min), input sanitization, encrypted API keys
-- **Logging**: Structured JSON logging with correlation IDs for request tracing
-- **Error Handling**: Comprehensive error responses with debug context
-- **Monitoring**: Health checks, resource usage tracking
-- **Deployment**: Docker Compose production setup with health checks
+### Story Sharing
+- Share stories with a unique public link
+- Toggle sharing on/off anytime
+- Comments on shared stories
+- Owner can view and manage comments
 
-## 📚 API Documentation
+### Export Options
+- **PDF**: Best for printing and reading on any device
+- **EPUB**: For e-readers like Kindle, Kobo, or Apple Books
+- **CBZ**: Comic book format for comic reader apps
+- **Images**: Download all images as a ZIP archive
+
+### Templates
+- Pre-made story templates for quick starts
+- Genre-specific templates (adventure, fantasy, etc.)
+- Character template suggestions
+
+## API Documentation
 
 ### Core Endpoints
 
+**Authentication:**
+- `POST /api/auth/register` - Create account
+- `POST /api/auth/login` - Login
+- `POST /api/auth/logout` - Logout
+- `GET /api/auth/me` - Get current user
+- `GET /api/auth/google/authorize` - Google OAuth
+- `GET /api/auth/github/authorize` - GitHub OAuth
+
 **Stories:**
-- `POST /api/stories/generate` - Create new story (starts async generation)
-- `GET /api/stories` - List stories (pagination, filtering, search)
+- `POST /api/stories/generate` - Create new story
+- `GET /api/stories` - List user's stories
 - `GET /api/stories/:id` - Get specific story
-- `GET /api/stories/:id/status` - Get generation status
 - `DELETE /api/stories/:id` - Delete story
+
+**Sharing:**
+- `POST /api/stories/:id/share` - Enable sharing
+- `DELETE /api/stories/:id/share` - Disable sharing
+- `GET /api/shared` - List public stories
+- `GET /api/shared/:token` - View shared story
+
+**Bookmarks:**
+- `GET /api/bookmarks` - List user's bookmarks
+- `POST /api/bookmarks/:story_id` - Add bookmark
+- `DELETE /api/bookmarks/:story_id` - Remove bookmark
+
+**Comments:**
+- `GET /api/stories/:id/comments` - List comments
+- `POST /api/stories/:id/comments` - Add comment
+- `DELETE /api/comments/:id` - Delete comment
+
+**Exports:**
+- `GET /api/exports/:id/pdf` - Export as PDF
+- `GET /api/exports/:id/epub` - Export as EPUB
+- `GET /api/exports/:id/cbz` - Export as CBZ
+- `GET /api/exports/:id/images` - Export images as ZIP
+
+**Templates:**
+- `GET /api/templates` - List available templates
+- `GET /api/templates/:id` - Get template details
 
 **Settings:**
 - `GET /api/settings` - Get application settings
 - `PUT /api/settings` - Update settings
-- `POST /api/settings/reset` - Reset to defaults
-
-**System:**
-- `GET /health` - Health check
-- `GET /` - API information
 
 ### Interactive Documentation
 
 - **Swagger UI**: http://localhost:8000/api/docs
 - **ReDoc**: http://localhost:8000/api/redoc
 
-## 🔧 Development
+## Development
 
 ### Backend Development
 
@@ -266,6 +273,9 @@ poetry run celery -A app.services.celery_app.celery_app worker --loglevel=info
 
 # Run tests
 poetry run pytest
+
+# Run tests with coverage
+poetry run pytest --cov=app
 
 # Code quality
 poetry run black .
@@ -286,6 +296,9 @@ npm run build
 
 # Lint
 npm run lint
+
+# Type check
+npm run typecheck
 ```
 
 ### Docker Services
@@ -294,8 +307,11 @@ npm run lint
 # Start core services
 docker compose up -d
 
+# Start everything including backend
+docker compose --profile full up -d
+
 # View logs
-docker compose logs -f
+docker compose logs -f [service-name]
 
 # Stop services
 docker compose down
@@ -304,136 +320,129 @@ docker compose down
 docker compose down -v
 ```
 
-## 🧪 Testing
+## Configuration
 
-### Backend Tests
+### Backend Environment Variables
 
 ```bash
-cd backend
-poetry run pytest -v
+# Application
+APP_NAME=StorAI-Booker
+ENV=development
+SECRET_KEY=your-secret-key
+
+# Database
+MONGODB_URL=mongodb://localhost:27017
+MONGODB_DB_NAME=storai_booker
+
+# Redis
+REDIS_URL=redis://localhost:6379/0
+CELERY_BROKER_URL=redis://localhost:6379/1
+
+# Storage (MinIO/S3)
+S3_ENDPOINT_URL=http://localhost:9000
+S3_ACCESS_KEY_ID=minioadmin
+S3_SECRET_ACCESS_KEY=minioadmin
+S3_BUCKET_NAME=storai-booker-images
+
+# Google Gemini (required)
+GOOGLE_API_KEY=your-api-key
+DEFAULT_LLM_PROVIDER=google
+DEFAULT_TEXT_MODEL=gemini-2.5-flash
+DEFAULT_IMAGE_MODEL=gemini-2.0-flash-exp
+
+# JWT Authentication
+JWT_SECRET_KEY=your-jwt-secret
+JWT_ACCESS_TOKEN_EXPIRE_MINUTES=60
+
+# OAuth (optional)
+GOOGLE_CLIENT_ID=your-client-id
+GOOGLE_CLIENT_SECRET=your-client-secret
+GITHUB_CLIENT_ID=your-client-id
+GITHUB_CLIENT_SECRET=your-client-secret
+
+# Sentry (optional)
+SENTRY_DSN=your-sentry-dsn
+SENTRY_ENVIRONMENT=development
 ```
 
-Current test coverage focuses on:
-- API endpoint integration
-- Database operations
-- Error handling
+### Frontend Environment Variables
 
-### Manual Testing
+```bash
+# Sentry (optional)
+VITE_SENTRY_DSN=your-sentry-dsn
+VITE_SENTRY_ENVIRONMENT=development
+VITE_APP_VERSION=0.1.0
+```
 
-1. Start all services
-2. Navigate to http://localhost:5173
-3. Go to Settings → Add Google API key
-4. Go to Generate → Create a new story
-5. Monitor progress in real-time
-6. View completed story in Library → Read
+See [docs/CONFIGURATION.md](docs/CONFIGURATION.md) for complete configuration reference.
 
-## 💰 Cost Estimates
-
-Using Google Gemini (December 2024 pricing):
-
-- **Text Generation**: ~$0.20-0.40 per story
-- **Image Generation**: ~$0.45-0.55 per story (11 images)
-- **Total**: ~$0.65-0.95 per 10-page illustrated storybook
-
-For 100 stories/month: **~$65-95/month**
-
-## 🛣️ Development Roadmap
-
-- [x] **Phase 0**: Project Setup ✅
-- [x] **Phase 1**: Core Backend & Database ✅
-- [x] **Phase 2**: LLM Agent System ✅
-- [x] **Phase 3**: Image Generation ✅
-- [x] **Phase 4**: Frontend Development ✅
-- [x] **Phase 5**: Production Readiness ✅ COMPLETE
-  - [x] 5.1 Testing & Code Coverage (49% backend coverage, 44 tests) ✅
-  - [x] 5.2 Performance Optimization (caching, image optimization) ✅
-  - [x] 5.3 Security Hardening (rate limiting, input sanitization, crypto) ✅
-  - [x] 5.4 Error Handling & Logging (correlation IDs, structured logging) ✅
-  - [x] 5.5 Documentation (API, config, troubleshooting) ✅
-  - [x] 5.6 CI/CD Pipeline (GitHub Actions) ✅
-- [ ] **Phase 6**: Advanced Features (Next)
-  - [ ] User accounts & authentication
-  - [ ] PDF/EPUB export
-  - [ ] Story sharing & collaboration
-  - [ ] Accessibility improvements
-
-## 📖 Documentation
+## Documentation
 
 ### Getting Started
 - **[Quick Start](QUICK_START.md)** - 5-minute setup guide
 - **[Deployment Guide](DEPLOYMENT.md)** - Production deployment with Docker
 - **[Configuration Guide](docs/CONFIGURATION.md)** - Environment variables reference
-- **[Testing Guide](TESTING.md)** - Testing instructions
+
+### User Guide
+- **[Features Guide](docs/FEATURES.md)** - Complete feature documentation
 
 ### API & Development
-- **[API Documentation](docs/API.md)** - Complete REST API reference
-- **[Backend README](backend/README.md)** - Backend architecture and development
-- **[CLAUDE.md](CLAUDE.md)** - Guide for Claude Code instances
+- **[API Documentation](docs/API.md)** - REST API reference
+- **[Contributing Guide](CONTRIBUTING.md)** - How to contribute
+- **[Testing Guide](TESTING.md)** - Testing instructions
 
 ### Operations
 - **[Troubleshooting Guide](docs/TROUBLESHOOTING.md)** - Common issues and solutions
-- **[Performance Guide](PERFORMANCE.md)** - Performance optimization strategies
-- **[CI/CD Guide](docs/CI_CD.md)** - GitHub Actions workflows and automation
+- **[CI/CD Guide](docs/CI_CD.md)** - GitHub Actions workflows
 
 ### Project Planning
-- **[Application Spec](specs/application-spec.md)** - Complete feature specification
-- **[Development Plan](specs/development-plan.md)** - 6-phase implementation roadmap
+- **[Application Spec](specs/application-spec.md)** - Feature specification
+- **[Development Plan](specs/development-plan.md)** - Implementation roadmap
 
-## ⚙️ Configuration
+## Development Roadmap
 
-### Environment Variables
+- [x] **Phase 0**: Project Setup
+- [x] **Phase 1**: Core Backend & Database
+- [x] **Phase 2**: LLM Agent System
+- [x] **Phase 3**: Image Generation
+- [x] **Phase 4**: Frontend Development
+- [x] **Phase 5**: Production Readiness
+  - [x] 5.1 Testing & Code Coverage
+  - [x] 5.2 Performance Optimization
+  - [x] 5.3 Security Hardening
+  - [x] 5.4 Error Handling & Logging (Sentry)
+  - [x] 5.5 Documentation
+  - [x] 5.6 CI/CD Pipeline
+- [ ] **Phase 6**: Advanced Features (In Progress)
+  - [x] 6.1 Enhanced Comic Features
+  - [x] 6.2 Export & Sharing (PDF, EPUB, CBZ)
+  - [x] 6.3 User Accounts & Authentication
+  - [x] 6.4 Story Sharing & Comments
+  - [x] 6.5 Templates & Themes
+  - [x] 6.6 Accessibility (WCAG 2.1 AA)
+  - [ ] 6.7 Internationalization
 
-Backend `.env`:
-```bash
-# Google Gemini API
-GOOGLE_API_KEY=your-api-key-here
-DEFAULT_LLM_PROVIDER=google
-DEFAULT_TEXT_MODEL=gemini-2.5-flash
-DEFAULT_IMAGE_MODEL=gemini-2.5-flash-image
+## Cost Estimates
 
-# Database & Storage
-MONGODB_URL=mongodb://localhost:27017
-REDIS_URL=redis://localhost:6379/0
-S3_ENDPOINT_URL=http://localhost:9000
-S3_BUCKET_NAME=storai-booker-images
+Using Google Gemini (December 2024 pricing):
 
-# Image Settings
-IMAGE_ASPECT_RATIO=16:9
-COVER_ASPECT_RATIO=3:4
-IMAGE_MAX_RETRIES=3
-```
+| Item | Cost per Story |
+|------|---------------|
+| Text Generation | ~$0.20-0.40 |
+| Image Generation | ~$0.45-0.55 |
+| **Total (10 pages)** | **~$0.65-0.95** |
 
-Frontend `.env` (optional):
-```bash
-VITE_API_URL=http://localhost:8000
-```
+For 100 stories/month: ~$65-95/month
 
-## 🚨 Important Notes
+## Contributing
 
-### Google Gemini API
-- Free tier available with rate limits
-- API key required for story generation
-- Safety filters may block some content
+See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on how to contribute to this project.
 
-### Storage
-- MinIO runs locally for development
-- Images stored with 30-day signed URLs
-- Total storage ~15-20MB per story
-
-### Performance
-- Story generation takes 3-5 minutes for 10 pages
-- Celery worker must be running
-- Frontend polls for status updates every 5 seconds
-
-## 🤝 Contributing
-
-This is a portfolio project currently in active development. Contributions are welcome after Phase 5 completion.
-
-## 📝 License
+## License
 
 Proprietary - Portfolio Project
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
 - Built with [FastAPI](https://fastapi.tiangolo.com/)
 - UI components from [shadcn/ui](https://ui.shadcn.com/)
@@ -442,6 +451,6 @@ Proprietary - Portfolio Project
 
 ---
 
-**Version**: Phase 5 Complete
-**Last Updated**: 2025-12-17
-**Status**: Production-Ready with Full CI/CD Pipeline ✅
+**Version**: 0.1.0
+**Last Updated**: 2024-12-20
+**Status**: Phase 6 In Progress

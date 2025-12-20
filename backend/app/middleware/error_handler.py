@@ -4,6 +4,7 @@ from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from loguru import logger
+import sentry_sdk
 
 
 async def http_exception_handler(request: Request, exc: StarletteHTTPException):
@@ -80,7 +81,7 @@ async def general_exception_handler(request: Request, exc: Exception):
     """
     Handle unexpected exceptions.
 
-    Logs the error and returns a generic error response.
+    Logs the error, reports to Sentry, and returns a generic error response.
     """
     # Get correlation ID from request state if available
     correlation_id = getattr(request.state, "correlation_id", None)
@@ -91,6 +92,19 @@ async def general_exception_handler(request: Request, exc: Exception):
         log_context["correlation_id"] = correlation_id
 
     logger.error(f"Unexpected error on {request.url.path}: {exc}", **log_context, exc_info=True)
+
+    # Capture exception to Sentry with additional context
+    with sentry_sdk.push_scope() as scope:
+        scope.set_tag("path", request.url.path)
+        scope.set_tag("method", request.method)
+        if correlation_id:
+            scope.set_tag("correlation_id", correlation_id)
+        scope.set_context("request", {
+            "url": str(request.url),
+            "method": request.method,
+            "query_params": dict(request.query_params),
+        })
+        sentry_sdk.capture_exception(exc)
 
     error_response = {
         "error": {

@@ -13,6 +13,10 @@ import { useAuthInit } from '@/lib/hooks/useAuth';
 import { useRouteAnnouncer } from '@/lib/hooks/useRouteAnnouncer';
 import { AnnouncerProvider } from '@/lib/contexts/AnnouncerContext';
 import { HomePage } from '@/pages';
+import { initSentry } from '@/lib/sentry';
+
+// Initialize Sentry error tracking
+initSentry();
 
 // Lazy load pages for code splitting
 const GeneratePage = lazy(() => import('@/pages/GeneratePage').then(m => ({ default: m.GeneratePage })));

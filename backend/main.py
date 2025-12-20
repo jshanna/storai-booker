@@ -9,6 +9,11 @@ from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 from loguru import logger
+import sentry_sdk
+from sentry_sdk.integrations.fastapi import FastApiIntegration
+from sentry_sdk.integrations.starlette import StarletteIntegration
+from sentry_sdk.integrations.celery import CeleryIntegration
+from sentry_sdk.integrations.loguru import LoguruIntegration
 
 from app.core.config import settings
 from app.core.database import db
@@ -24,6 +29,41 @@ from app.middleware.request_context import RequestContextMiddleware
 
 # Configure logging before anything else
 configure_logging()
+
+# Initialize Sentry error tracking (only if DSN is configured)
+if settings.sentry_dsn:
+    sentry_sdk.init(
+        dsn=settings.sentry_dsn,
+        environment=settings.sentry_environment,
+        release=f"{settings.app_name}@{settings.app_version}",
+        traces_sample_rate=settings.sentry_traces_sample_rate,
+        profiles_sample_rate=settings.sentry_profiles_sample_rate,
+        integrations=[
+            FastApiIntegration(transaction_style="endpoint"),
+            StarletteIntegration(transaction_style="endpoint"),
+            CeleryIntegration(),
+            LoguruIntegration(),
+        ],
+        # Don't send PII by default
+        send_default_pii=False,
+        # Attach request data for debugging
+        request_bodies="medium",
+        # Filter sensitive data
+        before_send=lambda event, hint: _filter_sensitive_data(event),
+    )
+    logger.info(f"Sentry initialized for environment: {settings.sentry_environment}")
+
+
+def _filter_sensitive_data(event):
+    """Filter sensitive data from Sentry events before sending."""
+    # Remove sensitive headers
+    if "request" in event and "headers" in event["request"]:
+        headers = event["request"]["headers"]
+        sensitive_headers = ["authorization", "cookie", "x-api-key"]
+        for header in sensitive_headers:
+            if header in headers:
+                headers[header] = "[Filtered]"
+    return event
 
 
 @asynccontextmanager

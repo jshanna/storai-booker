@@ -14,6 +14,7 @@ import type {
   OAuthCallbackRequest,
 } from '@/types/auth';
 import { authApi } from '@/lib/api/auth';
+import { setUser as setSentryUser } from '@/lib/sentry';
 
 interface AuthState {
   // State
@@ -85,10 +86,13 @@ export const useAuthStore = create<AuthState>()(
           // Fetch current user
           const user = await authApi.getCurrentUser();
           set({ status: 'authenticated', user });
+          // Set Sentry user context
+          setSentryUser({ id: user.id, email: user.email });
         } catch (error) {
           // Auth check failed
           authApi.clearTokens();
           set({ status: 'unauthenticated', user: null });
+          setSentryUser(null);
         }
       },
 
@@ -102,6 +106,7 @@ export const useAuthStore = create<AuthState>()(
           await authApi.register(data);
           const user = await authApi.getCurrentUser();
           set({ status: 'authenticated', user });
+          setSentryUser({ id: user.id, email: user.email });
         } catch (error: any) {
           const message = error.response?.data?.detail || error.message || 'Registration failed';
           set({ status: 'unauthenticated', error: message });
@@ -119,6 +124,7 @@ export const useAuthStore = create<AuthState>()(
           await authApi.login(data);
           const user = await authApi.getCurrentUser();
           set({ status: 'authenticated', user });
+          setSentryUser({ id: user.id, email: user.email });
         } catch (error: any) {
           const message = error.response?.data?.detail || error.message || 'Login failed';
           set({ status: 'unauthenticated', error: message });
@@ -134,6 +140,7 @@ export const useAuthStore = create<AuthState>()(
           await authApi.logout();
         } finally {
           set({ status: 'unauthenticated', user: null, error: null });
+          setSentryUser(null);
         }
       },
 
@@ -268,9 +275,11 @@ export const useAuthStore = create<AuthState>()(
           // Fetch user after OAuth login
           const user = await authApi.getCurrentUser();
           set({ status: 'authenticated', user });
+          setSentryUser({ id: user.id, email: user.email });
         } catch (error: any) {
           const message = error.response?.data?.detail || error.message || 'OAuth login failed';
           set({ status: 'unauthenticated', error: message });
+          setSentryUser(null);
           throw new Error(message);
         }
       },

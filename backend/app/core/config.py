@@ -118,6 +118,18 @@ class Settings(BaseSettings):
     log_level: str = Field(default="INFO", alias="LOG_LEVEL")
     log_format: str = Field(default="json", alias="LOG_FORMAT")
 
+    # Sentry Error Tracking
+    sentry_dsn: str = Field(default="", alias="SENTRY_DSN")
+    sentry_environment: str = Field(default="development", alias="SENTRY_ENVIRONMENT")
+    sentry_traces_sample_rate: float = Field(
+        default=0.1, alias="SENTRY_TRACES_SAMPLE_RATE",
+        description="Sample rate for performance monitoring (0.0 to 1.0)"
+    )
+    sentry_profiles_sample_rate: float = Field(
+        default=0.1, alias="SENTRY_PROFILES_SAMPLE_RATE",
+        description="Sample rate for profiling (0.0 to 1.0)"
+    )
+
     # JWT Settings
     jwt_secret_key: str = Field(
         default="",

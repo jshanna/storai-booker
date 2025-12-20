@@ -133,6 +133,9 @@ async def generate_story(
             status=storybook.status,
             error_message=storybook.error_message,
             cover_image_url=storybook.cover_image_url,
+            is_shared=storybook.is_shared,
+            share_token=storybook.share_token,
+            shared_at=storybook.shared_at,
         )
     except HTTPException:
         raise
@@ -150,6 +153,7 @@ async def list_stories(
     page_size: int = Query(10, ge=1, le=100, description="Items per page"),
     format: Optional[str] = Query(None, pattern="^(storybook|comic)$", description="Filter by format"),
     status: Optional[str] = Query(None, pattern="^(pending|generating|complete|error)$", description="Filter by status"),
+    shared: Optional[bool] = Query(None, description="Filter by sharing status (true=shared only, false=not shared)"),
     search: Optional[str] = Query(None, min_length=1, description="Search in title"),
     current_user: User = Depends(get_current_active_user),
 ):
@@ -158,7 +162,7 @@ async def list_stories(
 
     Supports:
     - Pagination via page and page_size
-    - Filtering by format (storybook/comic) and status
+    - Filtering by format (storybook/comic), status, and sharing status
     - Text search in title
 
     Requires authentication. Only returns stories owned by the current user.
@@ -167,7 +171,7 @@ async def list_stories(
         user_id = str(current_user.id)
 
         # Build cache key from query parameters (user-specific)
-        cache_key = f"stories:list:{user_id}:{page}:{page_size}:{format or 'all'}:{status or 'all'}:{search or ''}"
+        cache_key = f"stories:list:{user_id}:{page}:{page_size}:{format or 'all'}:{status or 'all'}:{shared if shared is not None else 'all'}:{search or ''}"
 
         # Try to get from cache
         cached = cache_service.get(cache_key)
@@ -181,6 +185,8 @@ async def list_stories(
             query["generation_inputs.format"] = format
         if status:
             query["status"] = status
+        if shared is not None:
+            query["is_shared"] = shared
         if search:
             # MongoDB text search
             query["$text"] = {"$search": search}
@@ -205,6 +211,9 @@ async def list_stories(
                     status=story.status,
                     error_message=story.error_message,
                     cover_image_url=story.cover_image_url,
+                    is_shared=story.is_shared,
+                    share_token=story.share_token,
+                    shared_at=story.shared_at,
                 )
                 for story in stories
             ],
@@ -275,6 +284,9 @@ async def get_story(
             status=story.status,
             error_message=story.error_message,
             cover_image_url=story.cover_image_url,
+            is_shared=story.is_shared,
+            share_token=story.share_token,
+            shared_at=story.shared_at,
         )
 
         # Cache the response (TTL: 5 minutes for individual stories)

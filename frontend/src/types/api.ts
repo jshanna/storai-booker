@@ -235,6 +235,7 @@ export interface StoryListParams {
   limit?: number;
   format?: 'storybook' | 'comic';
   status?: StoryStatus;
+  shared?: boolean;
   search?: string;
 }
 

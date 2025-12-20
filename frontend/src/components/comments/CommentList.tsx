@@ -12,10 +12,15 @@ import { useAuthStore } from '@/lib/stores/authStore';
 interface CommentListProps {
   shareToken: string;
   storyOwnerId?: string;
+  /** If true, the current user is the story owner (use their ID for delete permissions) */
+  isOwner?: boolean;
 }
 
-export function CommentList({ shareToken, storyOwnerId }: CommentListProps) {
+export function CommentList({ shareToken, storyOwnerId, isOwner }: CommentListProps) {
   const { user } = useAuthStore();
+
+  // If isOwner is true, use current user's ID as story owner for delete permissions
+  const effectiveOwnerId = isOwner ? user?.id : storyOwnerId;
   const {
     data,
     isLoading,
@@ -68,7 +73,7 @@ export function CommentList({ shareToken, storyOwnerId }: CommentListProps) {
               key={comment.id}
               comment={comment}
               currentUserId={user?.id}
-              storyOwnerId={storyOwnerId}
+              storyOwnerId={effectiveOwnerId}
               onDelete={handleDeleteComment}
               isDeleting={deleteComment.isPending}
             />

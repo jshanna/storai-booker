@@ -8,11 +8,14 @@ import { Pagination } from '@/components/shared';
 import { useStories, useDeleteStory, usePagination, useDebounce } from '@/lib/hooks';
 import type { StoryFormat, StoryStatus } from '@/types/api';
 
+type SharedFilter = 'all' | 'shared' | 'not_shared';
+
 export function LibraryPage() {
   // Filters state
   const [search, setSearch] = useState('');
   const [format, setFormat] = useState<StoryFormat | 'all'>('all');
   const [status, setStatus] = useState<StoryStatus | 'all'>('all');
+  const [shared, setShared] = useState<SharedFilter>('all');
 
   // Pagination
   const { page, limit, skip, setPage, getTotalPages } = usePagination({
@@ -26,6 +29,9 @@ export function LibraryPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [storyToDelete, setStoryToDelete] = useState<{ id: string; title: string } | null>(null);
 
+  // Convert shared filter to boolean for API
+  const sharedParam = shared === 'all' ? undefined : shared === 'shared';
+
   // Fetch stories
   const { data, isLoading, refetch } = useStories({
     skip,
@@ -33,6 +39,7 @@ export function LibraryPage() {
     search: debouncedSearch || undefined,
     format: format !== 'all' ? format : undefined,
     status: status !== 'all' ? status : undefined,
+    shared: sharedParam,
   });
 
   // Delete mutation
@@ -41,7 +48,7 @@ export function LibraryPage() {
   // Reset page when filters change
   useEffect(() => {
     setPage(1);
-  }, [debouncedSearch, format, status, setPage]);
+  }, [debouncedSearch, format, status, shared, setPage]);
 
   // Poll for generating stories every 5 seconds
   useEffect(() => {
@@ -93,6 +100,8 @@ export function LibraryPage() {
         onFormatChange={setFormat}
         status={status}
         onStatusChange={setStatus}
+        shared={shared}
+        onSharedChange={setShared}
       />
 
       {/* Story Grid */}

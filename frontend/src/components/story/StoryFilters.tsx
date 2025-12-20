@@ -14,6 +14,8 @@ import {
 import { Label } from '@/components/ui/label';
 import type { StoryFormat, StoryStatus } from '@/types/api';
 
+type SharedFilter = 'all' | 'shared' | 'not_shared';
+
 interface StoryFiltersProps {
   search: string;
   onSearchChange: (value: string) => void;
@@ -21,6 +23,8 @@ interface StoryFiltersProps {
   onFormatChange: (value: StoryFormat | 'all') => void;
   status: StoryStatus | 'all';
   onStatusChange: (value: StoryStatus | 'all') => void;
+  shared?: SharedFilter;
+  onSharedChange?: (value: SharedFilter) => void;
 }
 
 export function StoryFilters({
@@ -30,6 +34,8 @@ export function StoryFilters({
   onFormatChange,
   status,
   onStatusChange,
+  shared = 'all',
+  onSharedChange,
 }: StoryFiltersProps) {
   return (
     <div className="space-y-4">
@@ -52,7 +58,7 @@ export function StoryFilters({
       </div>
 
       {/* Filters */}
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {/* Format Filter */}
         <div>
           <Label htmlFor="format-filter">Format</Label>
@@ -90,6 +96,26 @@ export function StoryFilters({
             </SelectContent>
           </Select>
         </div>
+
+        {/* Sharing Filter */}
+        {onSharedChange && (
+          <div>
+            <Label htmlFor="shared-filter">Sharing</Label>
+            <Select
+              value={shared}
+              onValueChange={(value) => onSharedChange(value as SharedFilter)}
+            >
+              <SelectTrigger id="shared-filter">
+                <SelectValue placeholder="All stories" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Stories</SelectItem>
+                <SelectItem value="shared">Shared Only</SelectItem>
+                <SelectItem value="not_shared">Not Shared</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        )}
       </div>
     </div>
   );

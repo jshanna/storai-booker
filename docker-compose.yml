@@ -141,7 +141,7 @@ services:
       # Application
       ENV: ${ENV:-production}
       DEBUG: ${DEBUG:-false}
-      LOG_LEVEL: ${LOG_LEVEL:-info}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
       LOG_FORMAT: ${LOG_FORMAT:-json}
 
       # Database
@@ -225,7 +225,7 @@ services:
       # Application
       ENV: ${ENV:-production}
       DEBUG: ${DEBUG:-false}
-      LOG_LEVEL: ${LOG_LEVEL:-info}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
       LOG_FORMAT: ${LOG_FORMAT:-json}
 
       # Database

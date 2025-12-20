@@ -124,8 +124,12 @@ class Storybook(Document):
             IndexModel([("created_at", DESCENDING)]),
             IndexModel([("status", 1)]),
             IndexModel([("title", "text")]),  # Text search on title
-            # Sharing index
-            IndexModel([("share_token", 1)], unique=True, sparse=True),
+            # Sharing index - partial index to allow multiple null values
+            IndexModel(
+                [("share_token", 1)],
+                unique=True,
+                partialFilterExpression={"share_token": {"$type": "string"}}
+            ),
         ]
         # Configure Beanie to use timezone-aware datetimes
         use_state_management = True

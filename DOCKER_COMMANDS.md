@@ -2,14 +2,14 @@
 
 Quick reference for managing StorAI-Booker with Docker Compose.
 
-## Development Commands
+## Basic Commands
 
 ```bash
-# Start infrastructure only (MongoDB, Redis, MinIO)
+# Start all services
 docker compose up -d
 
-# Start all services including backend and Celery
-docker compose --profile full up -d
+# Start with rebuild
+docker compose up -d --build
 
 # Stop all services
 docker compose down
@@ -17,60 +17,37 @@ docker compose down
 # Stop and remove volumes (WARNING: deletes all data)
 docker compose down -v
 
+# View status
+docker compose ps
+
 # View logs
 docker compose logs -f
-docker compose logs -f backend
-docker compose logs -f celery-worker
-
-# Rebuild specific service
-docker compose up -d --build backend
-
-# Restart specific service
-docker compose restart backend
-```
-
-## Production Commands
-
-```bash
-# Build all images
-docker compose -f docker-compose.prod.yml build
-
-# Start all services
-docker compose -f docker-compose.prod.yml up -d
-
-# Start with build
-docker compose -f docker-compose.prod.yml up -d --build
-
-# Stop all services
-docker compose -f docker-compose.prod.yml down
-
-# View status
-docker compose -f docker-compose.prod.yml ps
-
-# View logs
-docker compose -f docker-compose.prod.yml logs -f
 
 # Logs for specific service
-docker compose -f docker-compose.prod.yml logs -f backend
-docker compose -f docker-compose.prod.yml logs -f celery-worker
-docker compose -f docker-compose.prod.yml logs -f frontend
+docker compose logs -f backend
+docker compose logs -f celery-worker
+docker compose logs -f frontend
+```
 
-# Scale Celery workers
-docker compose -f docker-compose.prod.yml up -d --scale celery-worker=3
+## Service Management
 
+```bash
 # Restart specific service
-docker compose -f docker-compose.prod.yml restart backend
+docker compose restart backend
 
 # Update single service without downtime
-docker compose -f docker-compose.prod.yml up -d --no-deps --build backend
+docker compose up -d --no-deps --build backend
+
+# Scale Celery workers (if needed)
+docker compose up -d --scale celery-worker=3
 ```
 
 ## Maintenance Commands
 
 ```bash
 # Execute command in running container
-docker compose -f docker-compose.prod.yml exec backend bash
-docker compose -f docker-compose.prod.yml exec mongodb mongosh
+docker compose exec backend bash
+docker compose exec mongodb mongosh
 
 # View resource usage
 docker stats
@@ -93,20 +70,20 @@ docker volume inspect storai-booker_mongodb_data
 
 ```bash
 # Access MongoDB shell
-docker compose -f docker-compose.prod.yml exec mongodb mongosh storai_booker
+docker compose exec mongodb mongosh storai_booker
 
 # Access Redis CLI
-docker compose -f docker-compose.prod.yml exec redis redis-cli
+docker compose exec redis redis-cli
 
 # Backup MongoDB
-docker compose -f docker-compose.prod.yml exec mongodb \
+docker compose exec mongodb \
   mongodump --out=/backup --db=storai_booker
 
 # Copy backup to host
-docker cp storai-mongodb-prod:/backup ./mongodb_backup
+docker cp storai-mongodb:/backup ./mongodb_backup
 
 # Restore MongoDB
-docker compose -f docker-compose.prod.yml exec mongodb \
+docker compose exec mongodb \
   mongorestore --db=storai_booker /backup
 ```
 
@@ -114,24 +91,24 @@ docker compose -f docker-compose.prod.yml exec mongodb \
 
 ```bash
 # Check service health
-docker compose -f docker-compose.prod.yml ps
+docker compose ps
 
 # View detailed container info
-docker inspect storai-backend-prod
+docker inspect storai-backend
 
 # Check networks
 docker network ls
 docker network inspect storai-network
 
 # Test connectivity between services
-docker compose -f docker-compose.prod.yml exec backend ping mongodb
-docker compose -f docker-compose.prod.yml exec backend curl http://redis:6379
+docker compose exec backend ping mongodb
+docker compose exec backend curl http://redis:6379
 
 # View environment variables
-docker compose -f docker-compose.prod.yml exec backend env
+docker compose exec backend env
 
 # Check resolved configuration
-docker compose -f docker-compose.prod.yml config
+docker compose config
 ```
 
 ## Port Reference
@@ -150,49 +127,61 @@ docker compose -f docker-compose.prod.yml config
 ### Full Restart
 
 ```bash
-docker compose -f docker-compose.prod.yml down
-docker compose -f docker-compose.prod.yml up -d
+docker compose down
+docker compose up -d
 ```
 
 ### Update Application Code
 
 ```bash
 git pull
-docker compose -f docker-compose.prod.yml up -d --build
+docker compose up -d --build
 ```
 
 ### Rolling Update (Zero Downtime)
 
 ```bash
 # Update backend
-docker compose -f docker-compose.prod.yml up -d --no-deps --build backend
+docker compose up -d --no-deps --build backend
 
 # Wait for health check
 sleep 10
 
 # Update Celery workers
-docker compose -f docker-compose.prod.yml up -d --no-deps --build celery-worker
+docker compose up -d --no-deps --build celery-worker
 
 # Update frontend
-docker compose -f docker-compose.prod.yml up -d --no-deps --build frontend
+docker compose up -d --no-deps --build frontend
 ```
 
 ### Clean Rebuild
 
 ```bash
-docker compose -f docker-compose.prod.yml down
-docker compose -f docker-compose.prod.yml build --no-cache
-docker compose -f docker-compose.prod.yml up -d
+docker compose down
+docker compose build --no-cache
+docker compose up -d
 ```
 
 ### View All Logs Since Yesterday
 
 ```bash
-docker compose -f docker-compose.prod.yml logs --since 24h
+docker compose logs --since 24h
 ```
 
 ### Follow Logs for Multiple Services
 
 ```bash
-docker compose -f docker-compose.prod.yml logs -f backend celery-worker
+docker compose logs -f backend celery-worker
+```
+
+## Development Mode
+
+For local development with hot-reload, start only infrastructure:
+
+```bash
+# Start only MongoDB, Redis, MinIO
+docker compose up -d mongodb redis minio createbuckets
+
+# Then run backend and frontend locally
+# See QUICK_START.md for details
 ```

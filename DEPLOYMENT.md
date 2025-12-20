@@ -60,13 +60,13 @@ cp .env.production.example .env.production
 nano .env.production
 
 # 4. Build and start all services
-docker compose -f docker-compose.prod.yml up -d --build
+docker compose up -d --build
 
 # 5. Check service health
-docker compose -f docker-compose.prod.yml ps
+docker compose ps
 
 # 6. View logs
-docker compose -f docker-compose.prod.yml logs -f
+docker compose logs -f
 
 # 7. Access the application
 # Frontend: http://localhost
@@ -111,7 +111,7 @@ The production compose file includes sensible resource limits:
 | Celery | 3.0 cores | 3GB | Background Jobs |
 | Frontend | 0.5 cores | 256MB | Web Server |
 
-Adjust in `docker-compose.prod.yml` based on your server capacity.
+Adjust in `docker-compose.yml` based on your server capacity.
 
 ## Deployment Steps
 
@@ -119,26 +119,26 @@ Adjust in `docker-compose.prod.yml` based on your server capacity.
 
 ```bash
 # Build images
-docker compose -f docker-compose.prod.yml build
+docker compose build
 
 # Start infrastructure services first
-docker compose -f docker-compose.prod.yml up -d mongodb redis minio createbuckets
+docker compose up -d mongodb redis minio createbuckets
 
 # Wait for health checks (30 seconds)
 sleep 30
 
 # Start application services
-docker compose -f docker-compose.prod.yml up -d backend celery-worker frontend
+docker compose up -d backend celery-worker frontend
 
 # Verify all services are running
-docker compose -f docker-compose.prod.yml ps
+docker compose ps
 ```
 
 ### 2. Verify Deployment
 
 ```bash
 # Check service health
-docker compose -f docker-compose.prod.yml ps
+docker compose ps
 
 # Expected output: All services should show "healthy" status
 
@@ -149,9 +149,9 @@ curl http://localhost:8000/health
 curl http://localhost/health
 
 # View logs
-docker compose -f docker-compose.prod.yml logs backend
-docker compose -f docker-compose.prod.yml logs celery-worker
-docker compose -f docker-compose.prod.yml logs frontend
+docker compose logs backend
+docker compose logs celery-worker
+docker compose logs frontend
 ```
 
 ### 3. Create First Story (Smoke Test)
@@ -182,14 +182,14 @@ curl -X POST http://localhost:8000/api/stories/generate \
 
 ```bash
 # All services
-docker compose -f docker-compose.prod.yml logs -f
+docker compose logs -f
 
 # Specific service
-docker compose -f docker-compose.prod.yml logs -f backend
-docker compose -f docker-compose.prod.yml logs -f celery-worker
+docker compose logs -f backend
+docker compose logs -f celery-worker
 
 # Last 100 lines
-docker compose -f docker-compose.prod.yml logs --tail=100 backend
+docker compose logs --tail=100 backend
 ```
 
 ### Check Resource Usage
@@ -210,15 +210,15 @@ du -sh /var/lib/docker/volumes/storai-booker_*
 
 ```bash
 # Backup MongoDB
-docker exec storai-mongodb-prod mongodump \
+docker exec storai-mongodb mongodump \
   --out=/backup/$(date +%Y%m%d_%H%M%S) \
   --db=storai_booker
 
 # Copy backup to host
-docker cp storai-mongodb-prod:/backup ./mongodb_backup
+docker cp storai-mongodb:/backup ./mongodb_backup
 
 # Restore MongoDB
-docker exec storai-mongodb-prod mongorestore \
+docker exec storai-mongodb mongorestore \
   --db=storai_booker \
   /backup/20240115_120000
 ```
@@ -246,13 +246,13 @@ docker run --rm \
 git pull origin main
 
 # Rebuild and restart services (zero-downtime)
-docker compose -f docker-compose.prod.yml up -d --build --no-deps backend
-docker compose -f docker-compose.prod.yml up -d --build --no-deps celery-worker
-docker compose -f docker-compose.prod.yml up -d --build --no-deps frontend
+docker compose up -d --build --no-deps backend
+docker compose up -d --build --no-deps celery-worker
+docker compose up -d --build --no-deps frontend
 
 # OR full restart (brief downtime)
-docker compose -f docker-compose.prod.yml down
-docker compose -f docker-compose.prod.yml up -d --build
+docker compose down
+docker compose up -d --build
 ```
 
 ## Troubleshooting
@@ -261,7 +261,7 @@ docker compose -f docker-compose.prod.yml up -d --build
 
 ```bash
 # Check logs
-docker compose -f docker-compose.prod.yml logs [service-name]
+docker compose logs [service-name]
 
 # Common issues:
 # 1. Port already in use
@@ -273,14 +273,14 @@ df -h
 docker system prune -a  # WARNING: Removes unused images
 
 # 3. Environment variables not set
-docker compose -f docker-compose.prod.yml config  # Shows resolved config
+docker compose config  # Shows resolved config
 ```
 
 ### Story Generation Failing
 
 ```bash
 # Check Celery worker logs
-docker compose -f docker-compose.prod.yml logs -f celery-worker
+docker compose logs -f celery-worker
 
 # Common issues:
 # 1. API key not set or invalid
@@ -288,7 +288,7 @@ docker compose -f docker-compose.prod.yml logs -f celery-worker
 # 3. Out of memory (check docker stats)
 
 # Restart worker
-docker compose -f docker-compose.prod.yml restart celery-worker
+docker compose restart celery-worker
 ```
 
 ### High Memory Usage
@@ -298,24 +298,24 @@ docker compose -f docker-compose.prod.yml restart celery-worker
 docker stats
 
 # Reduce Celery concurrency
-# Edit docker-compose.prod.yml:
+# Edit docker-compose.yml:
 # command: celery ... --concurrency=2  # Instead of 4
 
 # Restart with new settings
-docker compose -f docker-compose.prod.yml up -d celery-worker
+docker compose up -d celery-worker
 ```
 
 ### Database Connection Issues
 
 ```bash
 # Check MongoDB health
-docker compose -f docker-compose.prod.yml exec mongodb mongosh --eval "db.adminCommand('ping')"
+docker compose exec mongodb mongosh --eval "db.adminCommand('ping')"
 
 # Check if backend can reach MongoDB
-docker compose -f docker-compose.prod.yml exec backend curl mongodb:27017
+docker compose exec backend curl mongodb:27017
 
 # Restart MongoDB (will cause brief downtime)
-docker compose -f docker-compose.prod.yml restart mongodb
+docker compose restart mongodb
 ```
 
 ## Security Considerations
@@ -419,8 +419,8 @@ The production compose file uses a custom bridge network (`storai-network`). Ser
 
 ```bash
 # Update base images monthly
-docker compose -f docker-compose.prod.yml pull
-docker compose -f docker-compose.prod.yml up -d --build
+docker compose pull
+docker compose up -d --build
 ```
 
 ## Production Checklist
@@ -441,7 +441,7 @@ Before going live:
 ## Support
 
 For issues:
-- Check logs first: `docker compose -f docker-compose.prod.yml logs`
+- Check logs first: `docker compose logs`
 - Review troubleshooting section above
 - Open issue on GitHub: https://github.com/your-username/storai-booker/issues
 

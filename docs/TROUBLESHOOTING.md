@@ -707,7 +707,7 @@ docker stats
 
 2. **Reduce Celery concurrency:**
 ```bash
-# Edit docker-compose.prod.yml
+# Edit docker-compose.yml
 # Change: --concurrency=4 to --concurrency=2
 ```
 
@@ -724,7 +724,7 @@ docker compose restart celery-worker
 
 5. **Limit Docker memory:**
 ```yaml
-# In docker-compose.prod.yml
+# In docker-compose.yml
 services:
   celery-worker:
     deploy:

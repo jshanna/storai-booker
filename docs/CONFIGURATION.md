@@ -481,7 +481,7 @@ The frontend `vite.config.ts` proxies `/api/*` to `http://localhost:8000`, so yo
 
 ### `.env.production` (Production Deployment)
 
-Used by `docker-compose.prod.yml`:
+Used by `docker-compose.yml`:
 
 ```bash
 # Required: LLM Provider API Key

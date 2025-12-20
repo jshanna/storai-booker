@@ -245,7 +245,7 @@ Workflows only run when relevant files change:
 **Docker Build:**
 - `backend/**`
 - `frontend/**`
-- `docker-compose.prod.yml`
+- `docker-compose.yml`
 - `Dockerfile.*`
 
 ---

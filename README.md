@@ -52,50 +52,55 @@ AI-powered storybook and comic book generation application using Google Gemini f
 
 ### Prerequisites
 
-- **Docker & Docker Compose** (for infrastructure services)
-- **Python 3.10+** with Poetry
-- **Node.js 18+** with npm
+- **Docker & Docker Compose** v24.0+ ([Install Docker](https://docs.docker.com/get-docker/))
 - **Google API Key** ([Get one here](https://makersuite.google.com/app/apikey))
 
-### 5-Minute Setup
+### Deploy with Docker Compose
 
 ```bash
 # 1. Clone repository
 git clone <repository-url>
 cd storai-booker
 
-# 2. Start infrastructure (MongoDB, Redis, MinIO)
+# 2. Configure environment
+cp .env.production.example .env.production
+# Edit .env.production - add your GOOGLE_API_KEY and change default passwords
+
+# 3. Start all services
 docker compose up -d
 
-# 3. Setup backend
-cd backend
-poetry install
-cp .env.example .env
-# Add your GOOGLE_API_KEY to .env
-poetry run python main.py &
-
-# 4. Start Celery worker (in another terminal)
-cd backend
-poetry run celery -A app.services.celery_app.celery_app worker --loglevel=info &
-
-# 5. Setup frontend
-cd frontend
-npm install
-npm run dev
-
-# 6. Open browser
-open http://localhost:5173
+# 4. Open browser
+open http://localhost
 ```
+
+That's it! The application is now running with all services containerized.
 
 ### Access Points
 
 | Service | URL |
 |---------|-----|
-| Frontend | http://localhost:5173 |
+| Frontend | http://localhost |
 | Backend API | http://localhost:8000 |
 | API Docs (Swagger) | http://localhost:8000/api/docs |
 | API Docs (ReDoc) | http://localhost:8000/api/redoc |
 | MinIO Console | http://localhost:9001 |
+
+### Verify Deployment
+
+```bash
+# Check all services are healthy
+docker compose ps
+
+# View logs
+docker compose logs -f
+
+# Test health endpoint
+curl http://localhost:8000/health
+```
+
+### Development Mode (Optional)
+
+For local development with hot-reload, see [QUICK_START.md](QUICK_START.md).
 
 ## Architecture
 

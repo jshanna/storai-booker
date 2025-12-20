@@ -2,7 +2,7 @@
  * Dialog for managing story sharing.
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Copy, Check, Share2, Loader2 } from 'lucide-react';
 import {
   Dialog,
@@ -35,19 +35,38 @@ export function ShareDialog({ story, trigger, open: controlledOpen, onOpenChange
   const [copied, setCopied] = useState(false);
   const { toast } = useToast();
 
+  // Local state for sharing status - initialized from story prop, updated by mutations
+  const [isShared, setIsShared] = useState(story.is_shared ?? false);
+  const [shareToken, setShareToken] = useState(story.share_token ?? null);
+  const [sharedAt, setSharedAt] = useState(story.shared_at ?? null);
+
+  // Sync local state when story prop changes (e.g., from query invalidation)
+  useEffect(() => {
+    setIsShared(story.is_shared ?? false);
+    setShareToken(story.share_token ?? null);
+    setSharedAt(story.shared_at ?? null);
+  }, [story.is_shared, story.share_token, story.shared_at]);
+
   const enableSharing = useEnableSharing();
   const disableSharing = useDisableSharing();
 
-  const isShared = story.is_shared ?? false;
-  const shareUrl = story.share_token
-    ? `${window.location.origin}/shared/${story.share_token}`
+  const shareUrl = shareToken
+    ? `${window.location.origin}/shared/${shareToken}`
     : null;
 
   const handleToggleSharing = async (enabled: boolean) => {
     if (enabled) {
-      await enableSharing.mutateAsync(story.id);
+      const response = await enableSharing.mutateAsync(story.id);
+      // Update local state immediately from response
+      setIsShared(response.is_shared);
+      setShareToken(response.share_token ?? null);
+      setSharedAt(response.shared_at ?? null);
     } else {
-      await disableSharing.mutateAsync(story.id);
+      const response = await disableSharing.mutateAsync(story.id);
+      // Update local state immediately from response
+      setIsShared(response.is_shared);
+      setShareToken(response.share_token ?? null);
+      setSharedAt(response.shared_at ?? null);
     }
   };
 
@@ -145,9 +164,9 @@ export function ShareDialog({ story, trigger, open: controlledOpen, onOpenChange
           )}
 
           {/* Sharing Info */}
-          {isShared && story.shared_at && (
+          {isShared && sharedAt && (
             <p className="text-xs text-muted-foreground text-center">
-              Shared since {new Date(story.shared_at).toLocaleDateString()}
+              Shared since {new Date(sharedAt).toLocaleDateString()}
             </p>
           )}
         </div>

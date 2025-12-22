@@ -192,14 +192,15 @@ class AuthService:
                     )
 
     def _is_token_blacklisted(self, token: str) -> bool:
-        """Check if an access token is blacklisted (synchronous check)."""
-        # Note: This is a simplified check. In production, use async properly.
-        # The actual check happens in the validate methods
-        return False
+        """Check if an access token is blacklisted."""
+        token_hash = hashlib.sha256(token.encode()).hexdigest()[:32]
+        result = cache_service.get(f"{BLACKLIST_PREFIX}{token_hash}")
+        return result is not None
 
     def _is_refresh_token_blacklisted(self, jti: str) -> bool:
-        """Check if a refresh token is blacklisted (synchronous check)."""
-        return False
+        """Check if a refresh token is blacklisted."""
+        result = cache_service.get(f"{BLACKLIST_PREFIX}refresh:{jti}")
+        return result is not None
 
     async def is_token_blacklisted_async(self, token: str) -> bool:
         """Check if an access token is blacklisted."""

@@ -44,7 +44,7 @@ def user_to_response(user: User) -> UserResponse:
 
 async def get_current_user_from_token(authorization: Optional[str] = Header(None, alias="Authorization")) -> User:
     """Extract and validate user from Authorization header."""
-    logger.info(f"Authorization header received: {authorization[:50] if authorization else 'None'}...")
+    logger.debug(f"Authorization header present: {authorization is not None}")
     if not authorization:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -323,8 +323,9 @@ async def forgot_password(request: ForgotPasswordRequest):
     await user.save()
 
     # TODO: Send email with reset link
-    # For development, log the token
-    logger.info(f"Password reset token generated for {user.email}: {reset_token}")
+    logger.info(f"Password reset token generated for {user.email}")
+    if settings.is_development:
+        logger.debug(f"[DEV ONLY] Reset token for {user.email}: {reset_token}")
 
     return MessageResponse(message="If the email exists, a password reset link has been sent")
 
